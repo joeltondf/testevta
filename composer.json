@@ -1,0 +1,17 @@
+{
+    "require": {
+        "google/apiclient": "^2.15",
+        "phpmailer/phpmailer": "^6.6"
+    },
+    "autoload": {
+        "classmap": [
+            "app/controllers",
+            "app/models",
+            "app/services",
+            "app/utils"
+        ],
+        "files": [
+            "app/utils/PhoneUtils.php"
+        ]
+    }
+}
