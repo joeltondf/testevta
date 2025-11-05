@@ -35,14 +35,13 @@ function formatPaymentProfile(?string $profile): string
         return 'Não informado';
     }
 
-    $map = [
-        'mensalista' => 'Possível mensalista',
-        'avista' => 'Possível à vista',
-    ];
-
     $normalized = mb_strtolower(trim((string)$profile), 'UTF-8');
 
-    return $map[$normalized] ?? 'Não informado';
+    return match ($normalized) {
+        'mensalista' => 'Possível mensalista',
+        'à vista', 'a vista', 'avista' => 'Possível à vista',
+        default => 'Não informado',
+    };
 }
 
 $pageTitle = "Lista de Prospecções";
@@ -58,7 +57,7 @@ $search_responsavel = $_GET['responsavel_id'] ?? '';
 $search_data_inicio = $_GET['data_inicio'] ?? '';
 $search_data_fim = $_GET['data_fim'] ?? '';
 $search_payment_profile = $_GET['perfil_pagamento'] ?? '';
-$allowedPaymentProfiles = ['mensalista', 'avista'];
+$allowedPaymentProfiles = ['Mensalista', 'À vista'];
 
 if (!in_array($search_payment_profile, $allowedPaymentProfiles, true)) {
     $search_payment_profile = '';
@@ -187,8 +186,8 @@ require_once __DIR__ . '/../../app/views/layouts/header.php';
                 <label for="perfil_pagamento" class="block text-sm font-medium text-gray-600 mb-2">Perfil de pagamento</label>
                 <select name="perfil_pagamento" id="perfil_pagamento" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Todos</option>
-                    <option value="mensalista" <?php echo $search_payment_profile === 'mensalista' ? 'selected' : ''; ?>>Possível mensalista</option>
-                    <option value="avista" <?php echo $search_payment_profile === 'avista' ? 'selected' : ''; ?>>Possível à vista</option>
+                    <option value="Mensalista" <?php echo $search_payment_profile === 'Mensalista' ? 'selected' : ''; ?>>Possível mensalista</option>
+                    <option value="À vista" <?php echo $search_payment_profile === 'À vista' ? 'selected' : ''; ?>>Possível à vista</option>
                 </select>
             </div>
 
