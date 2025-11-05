@@ -2,13 +2,19 @@
 require_once __DIR__ . '/../models/Vendedor.php';
 require_once __DIR__ . '/../models/Processo.php';
 require_once __DIR__ . '/../models/Prospeccao.php';
+require_once __DIR__ . '/../services/DashboardKanbanService.php';
+require_once __DIR__ . '/QualificacaoController.php';
 
 class GerenteDashboardController
 {
     private $pdo;
+    private DashboardKanbanService $dashboardKanbanService;
+    private QualificacaoController $qualificationController;
     public function __construct($pdo)
     {
         $this->pdo = $pdo;
+        $this->dashboardKanbanService = new DashboardKanbanService($pdo);
+        $this->qualificationController = new QualificacaoController($pdo);
     }
 
     public function index()
@@ -130,6 +136,14 @@ class GerenteDashboardController
         $sdrVendorSummary = $prospeccaoModel->getSdrVendorConversionSummary($startDate, $endDate);
         $vendorCommissionReport = $processoModel->getVendorCommissionSummary($startDate, $endDate);
         $budgetOverview = $processoModel->getBudgetPipelineSummary($startDate, $endDate);
+        $kanbanFilters = $this->extractKanbanFilters($_GET ?? []);
+        $kanbanData = $this->dashboardKanbanService->buildManagerBoard($kanbanFilters);
+        $managerKanbanStatuses = $kanbanData['available_statuses'];
+        $managerKanbanLeads = $kanbanData['leads_by_status'];
+        $selectedKanbanStatuses = $kanbanData['selected_statuses'];
+        $kanbanFilterOptions = $kanbanData['filters'];
+        $leadQueuePreview = $kanbanData['queue_preview'];
+        $qualificationMetrics = $this->qualificationController->getQualificationMetrics();
 
         // Nome da página para a view
         $pageTitle = 'Painel de Gestão';
@@ -149,5 +163,34 @@ class GerenteDashboardController
         $parsed = \DateTime::createFromFormat('Y-m-d', $date);
 
         return $parsed instanceof \DateTime ? $parsed->format('Y-m-d') : null;
+    }
+
+    private function extractKanbanFilters(array $query): array
+    {
+        $filters = [];
+
+        if (!empty($query['kanban_status'])) {
+            $filters['statuses'] = array_filter((array) $query['kanban_status'], static function ($status) {
+                return is_string($status) && trim($status) !== '';
+            });
+        }
+
+        if (!empty($query['kanban_vendor_id'])) {
+            $filters['vendor_id'] = (int) $query['kanban_vendor_id'];
+        }
+
+        if (!empty($query['kanban_sdr_id'])) {
+            $filters['sdr_id'] = (int) $query['kanban_sdr_id'];
+        }
+
+        if (!empty($query['kanban_payment_profile'])) {
+            $filters['payment_profile'] = trim((string) $query['kanban_payment_profile']);
+        }
+
+        if (!empty($query['kanban_scope']) && trim((string) $query['kanban_scope']) === 'unassigned') {
+            $filters['only_unassigned'] = true;
+        }
+
+        return $filters;
     }
 }

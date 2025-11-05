@@ -132,6 +132,28 @@ class LeadDistributor
         ];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPendingQueue(int $limit = 20): array
+    {
+        $this->ensureQueueTableExists();
+
+        $limit = max(1, $limit);
+
+        $sql = 'SELECT prospeccao_id, tentativas, proximo_vendedor_id, status, mensagem_erro, atualizado_em
+                FROM ' . self::QUEUE_TABLE . '
+                WHERE status <> "Distribuído"
+                ORDER BY atualizado_em ASC
+                LIMIT :limit';
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
     public function previewNextSalesperson(): ?array
     {
         $activeVendors = $this->indexActiveVendors();
