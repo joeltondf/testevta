@@ -17,7 +17,7 @@ define('DB_CHARSET', 'utf8mb4');
 
 
 // 2. Configurações Gerais da Aplicação
-define('APP_URL', 'https://app.vettadocumental.com');
+define('APP_URL', 'https://teste.vettadocumental.com');
 define('APP_NAME', 'Vetta Documental');
 
 // 3. Iniciar a Sessão
