@@ -1,5 +1,5 @@
 <?php
-// Inclui o autoloader do Composer, que carrega a biblioteca do Google
+// Inclui o autoloader do Composer para carregar dependências compartilhadas
 require_once __DIR__ . '/vendor/autoload.php';
 
 // O config.php provavelmente já cuida da sessão e de outras configurações
@@ -7,8 +7,7 @@ require_once __DIR__ . '/config.php';
 
 // Inclui os arquivos do seu aplicativo
 require_once __DIR__ . '/app/models/Processo.php';
-require_once __DIR__ . '/app/models/Cliente.php'; 
-require_once __DIR__ . '/app/services/GoogleDriveService.php';
+require_once __DIR__ . '/app/models/Cliente.php';
 
 
 // GARANTIA: Inicia a sessão apenas se o config.php não o fez
@@ -48,8 +47,7 @@ try {
     $cliente = $clienteModel->getById($processo['cliente_id']);
     
     if ($cliente && !empty($cliente['email'])) {
-        $gdriveService = new GoogleDriveService($pdo);
-        $gdriveService->addReaderPermission($anexo['gdrive_file_id'], $cliente['email']);
+        error_log('Integração com Google Drive não disponível. Pulando concessão automática de permissões.');
     }
 
     // Agora, exibe a página com o iframe
