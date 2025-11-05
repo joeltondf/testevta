@@ -143,7 +143,7 @@ runTest('Cliente::create persiste DDI quando coluna existe', function (): void {
         cep TEXT NULL,
         tipo_pessoa TEXT NULL,
         tipo_assessoria TEXT NULL,
-        prazo_acordado_dias INTEGER NULL,
+        prazo_legalizacao_dias INTEGER NULL,
         user_id INTEGER NULL,
         is_prospect INTEGER NOT NULL DEFAULT 0
     )');
@@ -167,7 +167,7 @@ runTest('Cliente::create persiste DDI quando coluna existe', function (): void {
         'cep' => '01001000',
         'tipo_pessoa' => 'Jurídica',
         'tipo_assessoria' => 'Mensalista',
-        'prazo_acordado_dias' => 10,
+        'prazo_legalizacao_dias' => 10,
     ];
 
     $newId = $clienteModel->create($data);

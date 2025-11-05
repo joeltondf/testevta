@@ -137,7 +137,7 @@ class ClientesController
     public function store()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = $_POST;
+            $data = $this->mapLegacyDeadlineFields($_POST);
             $returnTo = $data['return_to'] ?? 'clientes.php';
 
             if (isset($data['tipo_pessoa']) && $data['tipo_pessoa'] === 'Física') {
@@ -147,7 +147,7 @@ class ClientesController
             $validationErrors = $this->validateClientData($data, true);
             if (!empty($validationErrors)) {
                 $_SESSION['error_message'] = implode('<br>', $validationErrors);
-                $this->rememberClientFormInput($_POST);
+                $this->rememberClientFormInput($data);
                 header('Location: clientes.php?action=create&return_to=' . urlencode($returnTo));
                 exit();
             }
@@ -158,7 +158,7 @@ class ClientesController
                 $data = $this->normalizePhoneData($data);
             } catch (InvalidArgumentException $exception) {
                 $_SESSION['error_message'] = $exception->getMessage();
-                $this->rememberClientFormInput($_POST);
+                $this->rememberClientFormInput($data);
                 header('Location: clientes.php?action=create&return_to=' . urlencode($returnTo));
                 exit();
             }
@@ -188,7 +188,7 @@ class ClientesController
             $_SESSION['error_message'] = ($result === 'error_duplicate_cpf_cnpj')
                 ? "O CPF/CNPJ informado já está em uso por outro cliente."
                 : "Erro ao cadastrar cliente.";
-            $this->rememberClientFormInput($_POST);
+            $this->rememberClientFormInput($data);
             header('Location: clientes.php?action=create&return_to=' . urlencode($returnTo));
             exit();
         }
@@ -200,8 +200,8 @@ class ClientesController
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id'];
-            $data = $_POST;
+            $data = $this->mapLegacyDeadlineFields($_POST);
+            $id = $data['id'];
             $returnTo = trim((string)($data['return_to'] ?? 'clientes.php'));
 
             if (isset($data['tipo_pessoa']) && $data['tipo_pessoa'] === 'Física') {
@@ -216,7 +216,7 @@ class ClientesController
             $validationErrors = $this->validateClientData($data);
             if (!empty($validationErrors)) {
                 $_SESSION['error_message'] = implode('<br>', $validationErrors);
-                $this->rememberClientFormInput($_POST);
+                $this->rememberClientFormInput($data);
                 header('Location: ' . $redirectToEdit);
                 exit();
             }
@@ -227,7 +227,7 @@ class ClientesController
                 $data = $this->normalizePhoneData($data);
             } catch (InvalidArgumentException $exception) {
                 $_SESSION['error_message'] = $exception->getMessage();
-                $this->rememberClientFormInput($_POST);
+                $this->rememberClientFormInput($data);
                 header('Location: ' . $redirectToEdit);
                 exit();
             }
@@ -237,20 +237,20 @@ class ClientesController
             if ($result === true) {
                 $_SESSION['success_message'] = "Cliente atualizado com sucesso!";
 
-                $sincronizarOmie = isset($_POST['sincronizar_omie']) ? (bool)$_POST['sincronizar_omie'] : false;
+                $sincronizarOmie = isset($data['sincronizar_omie']) ? (bool)$data['sincronizar_omie'] : false;
                 $this->syncUpdatedClientWithOmie((int)$id, $sincronizarOmie);
 
-                if ($_POST['tipo_assessoria'] === 'Mensalista') {
-                    $this->clienteModel->salvarServicosMensalista($id, $_POST['servicos_mensalistas'] ?? []);
+                if (($data['tipo_assessoria'] ?? '') === 'Mensalista') {
+                    $this->clienteModel->salvarServicosMensalista($id, $data['servicos_mensalistas'] ?? []);
                 } else {
                     $this->clienteModel->salvarServicosMensalista($id, []);
                 }
 
-                if (isset($_POST['continue_prospeccao_id'])) {
+                if (isset($data['continue_prospeccao_id'])) {
                     $queryParams = http_build_query([
                         'cliente_id' => $id,
-                        'titulo' => $_POST['continue_nome_servico'],
-                        'valor_total' => $_POST['continue_valor_inicial']
+                        'titulo' => $data['continue_nome_servico'],
+                        'valor_total' => $data['continue_valor_inicial']
                     ]);
                     $this->clearClientFormInput();
                     header('Location: ' . APP_URL . '/processos.php?action=create&' . $queryParams);
@@ -270,7 +270,7 @@ class ClientesController
                 $_SESSION['error_message'] = ($result === 'error_duplicate_cpf_cnpj')
                     ? "O CPF/CNPJ informado já está em uso por outro cliente."
                     : "Erro ao atualizar cliente.";
-                $this->rememberClientFormInput($_POST);
+                $this->rememberClientFormInput($data);
                 header('Location: ' . $redirectToEdit);
                 exit();
             }
@@ -372,11 +372,11 @@ class ClientesController
             }
         }
 
-        if (isset($data['prazo_acordado_dias'])) {
-            $prazoAcordado = trim((string) $data['prazo_acordado_dias']);
-            if ($prazoAcordado !== '') {
-                if (!ctype_digit($prazoAcordado) || (int) $prazoAcordado <= 0) {
-                    $errors[] = 'Informe um prazo acordado válido (número inteiro maior que zero).';
+        if (isset($data['prazo_legalizacao_dias'])) {
+            $prazoLegalizacao = trim((string) $data['prazo_legalizacao_dias']);
+            if ($prazoLegalizacao !== '') {
+                if (!ctype_digit($prazoLegalizacao) || (int) $prazoLegalizacao <= 0) {
+                    $errors[] = 'Informe um prazo de legalização válido (número inteiro maior que zero).';
                 }
             }
         }
@@ -498,9 +498,26 @@ class ClientesController
         $numero = trim((string) ($data['numero'] ?? ''));
         $data['numero'] = $numero === '' ? 'N/A' : $numero;
 
-        if (array_key_exists('prazo_acordado_dias', $data)) {
-            $prazoAcordado = trim((string) $data['prazo_acordado_dias']);
-            $data['prazo_acordado_dias'] = $prazoAcordado === '' ? null : (int) $prazoAcordado;
+        if (array_key_exists('prazo_legalizacao_dias', $data)) {
+            $prazoLegalizacao = trim((string) $data['prazo_legalizacao_dias']);
+            $data['prazo_legalizacao_dias'] = $prazoLegalizacao === '' ? null : (int) $prazoLegalizacao;
+        }
+
+        return $data;
+    }
+
+    private function mapLegacyDeadlineFields(array $data): array
+    {
+        $legacyKeys = ['prazo_acordado_dias', 'prazo_acordado_dia'];
+
+        if (!array_key_exists('prazo_legalizacao_dias', $data)) {
+            foreach ($legacyKeys as $legacyKey) {
+                if (array_key_exists($legacyKey, $data)) {
+                    $data['prazo_legalizacao_dias'] = $data[$legacyKey];
+                    unset($data[$legacyKey]);
+                    break;
+                }
+            }
         }
 
         return $data;
