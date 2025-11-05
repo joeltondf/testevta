@@ -12,6 +12,33 @@ $serviceTaxationOptions = [
     '05' => '05 - Exigibilidade suspensa por decisão judicial',
     '06' => '06 - Exigibilidade suspensa por procedimento administrativo',
 ];
+$omieSupportResources = [
+    [
+        'type' => 'etapas',
+        'title' => 'Etapas de Faturamento',
+        'description' => 'Etapas disponíveis na Omie para vincular pedidos de serviço.',
+    ],
+    [
+        'type' => 'categorias',
+        'title' => 'Categorias de Serviço',
+        'description' => 'Categorias de faturamento utilizadas na geração das OS.',
+    ],
+    [
+        'type' => 'contas',
+        'title' => 'Contas Correntes',
+        'description' => 'Contas bancárias cadastradas na Omie para recebimentos.',
+    ],
+    [
+        'type' => 'cenarios',
+        'title' => 'Cenários Fiscais',
+        'description' => 'Cenários de impostos aplicados aos serviços emitidos.',
+    ],
+    [
+        'type' => 'produtos',
+        'title' => 'Produtos e Serviços',
+        'description' => 'Catálogo de itens disponíveis para orçamentos e OS.',
+    ],
+];
 ?>
 
 <div class="container mx-auto px-4 py-8">
@@ -77,15 +104,30 @@ $serviceTaxationOptions = [
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
-        <h2 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Sincronização de Produtos</h2>
-        <p class="text-sm text-gray-600 mb-4">
-            Utilize a sincronização abaixo para atualizar os produtos e serviços cadastrados na Omie. Certifique-se de que as
-            credenciais estejam atualizadas antes de executar.
+        <h2 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Sincronização de Dados da Omie</h2>
+        <p class="text-sm text-gray-600 mb-6">
+            Atualize e consulte as tabelas auxiliares importadas da Omie. Esses dados alimentam o cadastro de processos e a geração de Ordens de Serviço.
         </p>
-        <form action="admin.php?action=sync_omie_support" method="POST" onsubmit="return confirm('Deseja sincronizar os produtos com a Omie agora?');">
-            <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">
-                Sincronizar Produtos com a Omie
-            </button>
-        </form>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <?php foreach ($omieSupportResources as $resource): ?>
+                <div class="border border-gray-200 rounded-lg p-4 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-800 mb-1"><?php echo htmlspecialchars($resource['title']); ?></h3>
+                        <p class="text-sm text-gray-600 mb-4"><?php echo htmlspecialchars($resource['description']); ?></p>
+                    </div>
+                    <div class="flex items-center justify-between mt-auto space-x-2">
+                        <a href="admin.php?action=omie_support&amp;type=<?php echo urlencode($resource['type']); ?>" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-100">
+                            Ver registros
+                        </a>
+                        <form action="admin.php?action=sync_omie_support" method="POST" onsubmit="return confirm('Deseja sincronizar <?php echo addslashes($resource['title']); ?> com a Omie agora?');">
+                            <input type="hidden" name="type" value="<?php echo htmlspecialchars($resource['type']); ?>">
+                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700">
+                                <i class="fas fa-sync-alt mr-2"></i> Sincronizar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 </div>

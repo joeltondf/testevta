@@ -23,6 +23,10 @@ require_once __DIR__ . '/../models/CategoriaFinanceira.php';
 require_once __DIR__ . '/../models/LancamentoFinanceiro.php';
 require_once __DIR__ . '/../services/EmailService.php';
 require_once __DIR__ . '/../models/Notificacao.php';
+require_once __DIR__ . '/../models/OmieEtapaFaturamento.php';
+require_once __DIR__ . '/../models/OmieCategoria.php';
+require_once __DIR__ . '/../models/OmieContaCorrente.php';
+require_once __DIR__ . '/../models/OmieCenarioFiscal.php';
 require_once __DIR__ . '/../utils/DocumentValidator.php';
 require_once __DIR__ . '/../utils/OmiePayloadBuilder.php';
 class ProcessosController
@@ -47,6 +51,10 @@ class ProcessosController
     private $emailService;
     private ?int $defaultVendorIdCache = null;
     private bool $defaultVendorResolved = false;
+    private OmieEtapaFaturamento $omieEtapaModel;
+    private OmieCategoria $omieCategoriaModel;
+    private OmieContaCorrente $omieContaCorrenteModel;
+    private OmieCenarioFiscal $omieCenarioFiscalModel;
 
     /**
      * Construtor da classe. Inicializa modelos e serviços necessários.
@@ -66,6 +74,10 @@ class ProcessosController
         $this->omieService = new OmieService($this->configModel, $pdo);
         $this->notificacaoModel = new Notificacao($pdo);
         $this->emailService = new EmailService($pdo);
+        $this->omieEtapaModel = new OmieEtapaFaturamento($pdo);
+        $this->omieCategoriaModel = new OmieCategoria($pdo);
+        $this->omieContaCorrenteModel = new OmieContaCorrente($pdo);
+        $this->omieCenarioFiscalModel = new OmieCenarioFiscal($pdo);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -188,7 +200,7 @@ class ProcessosController
         ];
         $tipos_traducao = $financeiroServicos['Tradução'];
         $tipos_crc = $financeiroServicos['CRC'];
-        $this->render('form', [
+        $this->render('form', array_merge([
             'clientes' => $clientes,
             'vendedores' => $vendedores,
             'tradutores' => $tradutores,
@@ -203,7 +215,7 @@ class ProcessosController
             'loggedInVendedorId' => $loggedInVendedor['id'],
             'loggedInVendedorName' => $loggedInVendedor['name'],
             'defaultVendorId' => $this->getDefaultVendorId(),
-        ]);
+        ], $this->getOmieSelectionOptions()));
     }
 
     /**
@@ -470,7 +482,7 @@ class ProcessosController
             'Outros' => $categoriaModel->getReceitasPorServico('Outros'),
         ];
 
-        $this->render('form', [
+        $this->render('form', array_merge([
             'processo' => !empty($formData) ? array_merge($processo, $formData) : $processo,
             'documentos' => $processoData['documentos'],
             'translationAttachments' => $translationAttachments,
@@ -487,7 +499,7 @@ class ProcessosController
             'loggedInVendedorId' => $loggedInVendedor['id'],
             'loggedInVendedorName' => $loggedInVendedor['name'],
             'defaultVendorId' => $this->getDefaultVendorId(),
-        ]);
+        ], $this->getOmieSelectionOptions()));
 
         $_SESSION['redirect_after_oauth'] = $_SERVER['REQUEST_URI'];
     }
@@ -541,7 +553,7 @@ class ProcessosController
         ];
         $formData = $this->consumeFormInput(self::SESSION_KEY_SERVICO_FORM);
 
-        $this->render('form_servico_rapido', [
+        $this->render('form_servico_rapido', array_merge([
             'clientes' => $clientes,
             'vendedores' => $vendedores,
             'tradutores' => $tradutores,
@@ -551,7 +563,7 @@ class ProcessosController
             'translationAttachments' => [],
             'crcAttachments' => [],
             'paymentProofAttachments' => [],
-        ]);
+        ], $this->getOmieSelectionOptions()));
     }
 
     /**
@@ -583,6 +595,7 @@ class ProcessosController
             $dadosParaSalvar['status_processo'] = $pendente ? 'Serviço Pendente' : 'Serviço em Andamento';
         }
 
+        $dadosParaSalvar = $this->prepareOmieSelectionData($dadosParaSalvar);
         $dadosParaSalvar = $this->applyPaymentDefaults($dadosParaSalvar);
         $processoId = $this->processoModel->create($dadosParaSalvar, $_FILES);
         if ($processoId) {
@@ -1391,6 +1404,16 @@ class ProcessosController
         return $base . '&return_to=' . urlencode($returnTo);
     }
 
+
+    private function getOmieSelectionOptions(): array
+    {
+        return [
+            'omieEtapas' => $this->omieEtapaModel->getActiveOrdered(),
+            'omieCategorias' => $this->omieCategoriaModel->getActiveOrdered(),
+            'omieContasCorrentes' => $this->omieContaCorrenteModel->getActiveOrdered(),
+            'omieCenariosFiscais' => $this->omieCenarioFiscalModel->getActiveOrdered(),
+        ];
+    }
 
     private function prepareOmieSelectionData(array $data): array
     {

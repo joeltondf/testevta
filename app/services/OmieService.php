@@ -7,6 +7,10 @@ require_once __DIR__ . '/../models/Cliente.php';
 require_once __DIR__ . '/../models/CategoriaFinanceira.php';
 require_once __DIR__ . '/../models/OmieProduto.php';
 require_once __DIR__ . '/../models/OmieCidade.php';
+require_once __DIR__ . '/../models/OmieEtapaFaturamento.php';
+require_once __DIR__ . '/../models/OmieCategoria.php';
+require_once __DIR__ . '/../models/OmieContaCorrente.php';
+require_once __DIR__ . '/../models/OmieCenarioFiscal.php';
 require_once __DIR__ . '/../utils/OmiePayloadBuilder.php';
 require_once __DIR__ . '/../utils/PhoneUtils.php';
 require_once __DIR__ . '/OmieApiClient.php';
@@ -21,6 +25,10 @@ class OmieService {
     private $clienteModel;
     private $categoriaModel;
     private $omieProdutoModel;
+    private ?OmieEtapaFaturamento $omieEtapaModel = null;
+    private ?OmieCategoria $omieCategoriaModel = null;
+    private ?OmieContaCorrente $omieContaCorrenteModel = null;
+    private ?OmieCenarioFiscal $omieCenarioFiscalModel = null;
 
     public function __construct(
         Configuracao $configModel,
@@ -95,6 +103,42 @@ class OmieService {
         }
 
         return $this->omieProdutoModel;
+    }
+
+    private function getOmieEtapaModel(): OmieEtapaFaturamento
+    {
+        if (!$this->omieEtapaModel instanceof OmieEtapaFaturamento) {
+            $this->omieEtapaModel = new OmieEtapaFaturamento($this->requirePdo());
+        }
+
+        return $this->omieEtapaModel;
+    }
+
+    private function getOmieCategoriaModel(): OmieCategoria
+    {
+        if (!$this->omieCategoriaModel instanceof OmieCategoria) {
+            $this->omieCategoriaModel = new OmieCategoria($this->requirePdo());
+        }
+
+        return $this->omieCategoriaModel;
+    }
+
+    private function getOmieContaCorrenteModel(): OmieContaCorrente
+    {
+        if (!$this->omieContaCorrenteModel instanceof OmieContaCorrente) {
+            $this->omieContaCorrenteModel = new OmieContaCorrente($this->requirePdo());
+        }
+
+        return $this->omieContaCorrenteModel;
+    }
+
+    private function getOmieCenarioFiscalModel(): OmieCenarioFiscal
+    {
+        if (!$this->omieCenarioFiscalModel instanceof OmieCenarioFiscal) {
+            $this->omieCenarioFiscalModel = new OmieCenarioFiscal($this->requirePdo());
+        }
+
+        return $this->omieCenarioFiscalModel;
     }
 
     /**
@@ -185,6 +229,114 @@ class OmieService {
             ['cenariosCadastro', 'lista'],
             $params
         );
+    }
+
+    public function syncEtapasFaturamento(): array
+    {
+        $items = $this->listarEtapasFaturamento();
+        $records = $this->normalizeSequentialList($items);
+        $model = $this->getOmieEtapaModel();
+
+        $count = 0;
+        foreach ($records as $record) {
+            $codigo = $this->extractFirstString($record, ['codigo', 'cCodigo', 'nCodigo', 'codigo_etapa']);
+            $descricao = $this->extractFirstString($record, ['descricao', 'cDescricao', 'descricao_etapa']);
+
+            if ($codigo === null || $descricao === null) {
+                continue;
+            }
+
+            $model->upsert([
+                'codigo' => $codigo,
+                'descricao' => $descricao,
+                'ativo' => $this->resolveActiveFlag($record),
+            ]);
+            $count++;
+        }
+
+        return ['total' => $count];
+    }
+
+    public function syncCategorias(): array
+    {
+        $items = $this->listarCategorias();
+        $records = $this->normalizeSequentialList($items);
+        $model = $this->getOmieCategoriaModel();
+
+        $count = 0;
+        foreach ($records as $record) {
+            $codigo = $this->extractFirstString($record, ['codigo', 'cCodigo', 'cCodCat', 'codigo_categoria']);
+            $descricao = $this->extractFirstString($record, ['descricao', 'cDescricao', 'descricao_categoria']);
+
+            if ($codigo === null || $descricao === null) {
+                continue;
+            }
+
+            $model->upsert([
+                'codigo' => $codigo,
+                'descricao' => $descricao,
+                'ativo' => $this->resolveActiveFlag($record),
+            ]);
+            $count++;
+        }
+
+        return ['total' => $count];
+    }
+
+    public function syncContasCorrentes(): array
+    {
+        $items = $this->listarContasCorrentes();
+        $records = $this->normalizeSequentialList($items);
+        $model = $this->getOmieContaCorrenteModel();
+
+        $count = 0;
+        foreach ($records as $record) {
+            $codigo = $this->extractFirstString($record, ['codigo', 'nCodCC', 'nCodigo']);
+            $descricao = $this->extractFirstString($record, ['descricao', 'cDescricao', 'nome']);
+
+            if ($codigo === null || $descricao === null) {
+                continue;
+            }
+
+            $model->upsert([
+                'codigo' => $codigo,
+                'descricao' => $descricao,
+                'tipo' => $this->extractFirstString($record, ['tipo', 'cTipo']),
+                'banco' => $this->extractFirstString($record, ['banco', 'cBanco']),
+                'numero_agencia' => $this->extractFirstString($record, ['numero_agencia', 'cAgencia', 'agencia']),
+                'numero_conta_corrente' => $this->extractFirstString($record, ['numero_conta_corrente', 'cContaCorrente', 'conta']),
+                'ativo' => $this->resolveActiveFlag($record),
+            ]);
+            $count++;
+        }
+
+        return ['total' => $count];
+    }
+
+    public function syncCenariosFiscais(): array
+    {
+        $items = $this->listarCenarios();
+        $records = $this->normalizeSequentialList($items);
+        $model = $this->getOmieCenarioFiscalModel();
+
+        $count = 0;
+        foreach ($records as $record) {
+            $codigo = $this->extractFirstString($record, ['codigo', 'cCodigo', 'codigo_cenario']);
+            $descricao = $this->extractFirstString($record, ['descricao', 'cDescricao', 'descricao_cenario']);
+
+            if ($codigo === null || $descricao === null) {
+                continue;
+            }
+
+            $model->upsert([
+                'codigo' => $codigo,
+                'descricao' => $descricao,
+                'ativo' => $this->resolveActiveFlag($record),
+            ]);
+            $count++;
+        }
+
+        return ['total' => $count];
     }
 
     /**
@@ -991,6 +1143,111 @@ class OmieService {
 
         $digits = preg_replace('/\D+/', '', (string)$value);
         return $digits === '' ? null : $digits;
+    }
+
+    private function extractFirstString(array $record, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $record)) {
+                continue;
+            }
+
+            $value = $this->normalizeString($record[$key]);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeSequentialList(array $items): array
+    {
+        $normalized = [];
+        foreach ($items as $item) {
+            if (is_array($item) && array_key_exists('lista', $item) && is_array($item['lista'])) {
+                foreach ($item['lista'] as $nested) {
+                    if (is_array($nested)) {
+                        $normalized[] = $nested;
+                    }
+                }
+                continue;
+            }
+
+            if (is_array($item) && $this->isSequentialList($item)) {
+                foreach ($item as $nested) {
+                    if (is_array($nested)) {
+                        $normalized[] = $nested;
+                    }
+                }
+                continue;
+            }
+
+            if (is_array($item)) {
+                $normalized[] = $item;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function isSequentialList(array $value): bool
+    {
+        if ($value === []) {
+            return false;
+        }
+
+        $keys = array_keys($value);
+        return $keys === range(0, count($value) - 1);
+    }
+
+    private function resolveActiveFlag(array $record): int
+    {
+        foreach (['ativo', 'cAtivo', 'situacao'] as $key) {
+            if (!array_key_exists($key, $record)) {
+                continue;
+            }
+
+            $interpreted = $this->interpretBooleanFlag($record[$key], true);
+            if ($interpreted !== null) {
+                return $interpreted;
+            }
+        }
+
+        foreach (['inativo', 'cInativo', 'desativado'] as $key) {
+            if (!array_key_exists($key, $record)) {
+                continue;
+            }
+
+            $interpreted = $this->interpretBooleanFlag($record[$key], false);
+            if ($interpreted !== null) {
+                return $interpreted;
+            }
+        }
+
+        return 1;
+    }
+
+    private function interpretBooleanFlag($value, bool $positiveMeansActive): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = mb_strtoupper(trim((string)$value));
+
+        $positives = ['S', 'SIM', 'Y', 'YES', '1', 'ATIVO', 'A', 'TRUE'];
+        $negatives = ['N', 'NAO', 'NÃO', 'NO', '0', 'INATIVO', 'I', 'FALSE'];
+
+        if (in_array($normalized, $positives, true)) {
+            return $positiveMeansActive ? 1 : 0;
+        }
+
+        if (in_array($normalized, $negatives, true)) {
+            return $positiveMeansActive ? 0 : 1;
+        }
+
+        return null;
     }
 
     private function maybeUpdateProcessStatus(int $processoId, ?string $statusAtual): void
