@@ -51,6 +51,7 @@ class ProcessosController
     private $emailService;
     private ?int $defaultVendorIdCache = null;
     private bool $defaultVendorResolved = false;
+    private bool $omieIntegrationEnabled;
     private OmieEtapaFaturamento $omieEtapaModel;
     private OmieCategoria $omieCategoriaModel;
     private OmieContaCorrente $omieContaCorrenteModel;
@@ -78,6 +79,7 @@ class ProcessosController
         $this->omieCategoriaModel = new OmieCategoria($pdo);
         $this->omieContaCorrenteModel = new OmieContaCorrente($pdo);
         $this->omieCenarioFiscalModel = new OmieCenarioFiscal($pdo);
+        $this->omieIntegrationEnabled = $this->omieService->isIntegrationEnabled();
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -215,6 +217,7 @@ class ProcessosController
             'loggedInVendedorId' => $loggedInVendedor['id'],
             'loggedInVendedorName' => $loggedInVendedor['name'],
             'defaultVendorId' => $this->getDefaultVendorId(),
+            'omieIntegrationEnabled' => $this->omieIntegrationEnabled,
         ], $this->getOmieSelectionOptions()));
     }
 
@@ -499,6 +502,7 @@ class ProcessosController
             'loggedInVendedorId' => $loggedInVendedor['id'],
             'loggedInVendedorName' => $loggedInVendedor['name'],
             'defaultVendorId' => $this->getDefaultVendorId(),
+            'omieIntegrationEnabled' => $this->omieIntegrationEnabled,
         ], $this->getOmieSelectionOptions()));
 
         $_SESSION['redirect_after_oauth'] = $_SERVER['REQUEST_URI'];
@@ -563,6 +567,7 @@ class ProcessosController
             'translationAttachments' => [],
             'crcAttachments' => [],
             'paymentProofAttachments' => [],
+            'omieIntegrationEnabled' => $this->omieIntegrationEnabled,
         ], $this->getOmieSelectionOptions()));
     }
 
@@ -1407,6 +1412,15 @@ class ProcessosController
 
     private function getOmieSelectionOptions(): array
     {
+        if (!$this->omieIntegrationEnabled) {
+            return [
+                'omieEtapas' => [],
+                'omieCategorias' => [],
+                'omieContasCorrentes' => [],
+                'omieCenariosFiscais' => [],
+            ];
+        }
+
         return [
             'omieEtapas' => $this->omieEtapaModel->getActiveOrdered(),
             'omieCategorias' => $this->omieCategoriaModel->getActiveOrdered(),
