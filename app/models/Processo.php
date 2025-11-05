@@ -164,8 +164,6 @@ public function create($data, $files)
         $prazo_calculado = new DateTime();
         $prazo_calculado->modify('+3 days');
         $prazo_formatado = $prazo_calculado->format('Y-m-d');
-        $omieKeyPreview = $this->generateNextOmieKey();
-
         // ===== INÍCIO DA CORREÇÃO =====
         // Query SQL CORRIGIDA: A coluna 'orcamento_comprovantes' foi removida.
         $sqlProcesso = "INSERT INTO processos (
@@ -179,7 +177,7 @@ public function create($data, $files)
             data_entrada, data_inicio_traducao, traducao_modalidade,
             traducao_prazo_data, traducao_prazo_dias,
             assinatura_tipo, tradutor_id, modalidade_assinatura,
-            etapa_faturamento_codigo, codigo_categoria, codigo_conta_corrente, codigo_cenario_fiscal, os_numero_conta_azul
+            etapa_faturamento_codigo, codigo_categoria, codigo_conta_corrente, codigo_cenario_fiscal, codigo_pedido_integracao
         ) VALUES (
             :cliente_id, :colaborador_id, :vendedor_id, :titulo, :status_processo,
             :orcamento_numero, :orcamento_origem, :orcamento_prazo_calculado,
@@ -191,7 +189,7 @@ public function create($data, $files)
             :data_entrada, :data_inicio_traducao, :traducao_modalidade,
             :traducao_prazo_data, :traducao_prazo_dias,
             :assinatura_tipo, :tradutor_id, :modalidade_assinatura,
-            :etapa_faturamento_codigo, :codigo_categoria, :codigo_conta_corrente, :codigo_cenario_fiscal, :os_numero_conta_azul
+            :etapa_faturamento_codigo, :codigo_categoria, :codigo_conta_corrente, :codigo_cenario_fiscal, :codigo_pedido_integracao
         )";
         $stmtProcesso = $this->pdo->prepare($sqlProcesso);
 
@@ -236,13 +234,12 @@ public function create($data, $files)
             'codigo_categoria' => $this->sanitizeNullableString($data['codigo_categoria'] ?? null),
             'codigo_conta_corrente' => $this->sanitizeNullableInt($data['codigo_conta_corrente'] ?? null),
             'codigo_cenario_fiscal' => $this->sanitizeNullableInt($data['codigo_cenario_fiscal'] ?? null),
-            'os_numero_conta_azul' => $omieKeyPreview
+            'codigo_pedido_integracao' => $this->sanitizeNullableString($data['codigo_pedido_integracao'] ?? null)
         ];
         // ===== FIM DA CORREÇÃO =====
 
         $stmtProcesso->execute($params);
         $processoId = (int)$this->pdo->lastInsertId();
-        $this->updateOmieKeyForProcessId($processoId);
 
         // Esta lógica de salvar arquivos e documentos já estava correta e foi mantida.
         // O formulário de serviço rápido envia arquivos no campo 'anexos', que serão salvos aqui.
@@ -346,22 +343,32 @@ public function create($data, $files)
         $this->pdo->beginTransaction();
         try {
             // A lógica de atualização dos dados do processo permanece a mesma
-            $sqlProcesso = "UPDATE processos SET
-                                cliente_id = :cliente_id, vendedor_id = :vendedor_id, titulo = :titulo, status_processo = :status_processo,
-                                orcamento_origem = :orcamento_origem, categorias_servico = :categorias_servico, idioma = :idioma,
-                                modalidade_assinatura = :modalidade_assinatura, valor_total = :valor_total, orcamento_forma_pagamento = :orcamento_forma_pagamento,
-                                orcamento_parcelas = :orcamento_parcelas, orcamento_valor_entrada = :orcamento_valor_entrada,
-                                data_pagamento_1 = :data_pagamento_1, data_pagamento_2 = :data_pagamento_2,
-                                apostilamento_quantidade = :apostilamento_quantidade, apostilamento_valor_unitario = :apostilamento_valor_unitario,
-                                postagem_quantidade = :postagem_quantidade, postagem_valor_unitario = :postagem_valor_unitario,
-                                observacoes = :observacoes,
-                                etapa_faturamento_codigo = :etapa_faturamento_codigo,
-                                codigo_categoria = :codigo_categoria,
-                                codigo_conta_corrente = :codigo_conta_corrente,
-                                codigo_cenario_fiscal = :codigo_cenario_fiscal
-                            WHERE id = :id";
-            $stmtProcesso = $this->pdo->prepare($sqlProcesso);
-            
+            $setClauses = [
+                'cliente_id = :cliente_id',
+                'vendedor_id = :vendedor_id',
+                'titulo = :titulo',
+                'status_processo = :status_processo',
+                'orcamento_origem = :orcamento_origem',
+                'categorias_servico = :categorias_servico',
+                'idioma = :idioma',
+                'modalidade_assinatura = :modalidade_assinatura',
+                'valor_total = :valor_total',
+                'orcamento_forma_pagamento = :orcamento_forma_pagamento',
+                'orcamento_parcelas = :orcamento_parcelas',
+                'orcamento_valor_entrada = :orcamento_valor_entrada',
+                'data_pagamento_1 = :data_pagamento_1',
+                'data_pagamento_2 = :data_pagamento_2',
+                'apostilamento_quantidade = :apostilamento_quantidade',
+                'apostilamento_valor_unitario = :apostilamento_valor_unitario',
+                'postagem_quantidade = :postagem_quantidade',
+                'postagem_valor_unitario = :postagem_valor_unitario',
+                'observacoes = :observacoes',
+                'etapa_faturamento_codigo = :etapa_faturamento_codigo',
+                'codigo_categoria = :codigo_categoria',
+                'codigo_conta_corrente = :codigo_conta_corrente',
+                'codigo_cenario_fiscal = :codigo_cenario_fiscal',
+            ];
+
             $params = [
                 'id' => $id,
                 'cliente_id' => $data['cliente_id'],
@@ -390,6 +397,14 @@ public function create($data, $files)
                 'codigo_conta_corrente' => $this->sanitizeNullableInt($data['codigo_conta_corrente'] ?? null),
                 'codigo_cenario_fiscal' => $this->sanitizeNullableInt($data['codigo_cenario_fiscal'] ?? null)
             ];
+
+            if (array_key_exists('codigo_pedido_integracao', $data)) {
+                $setClauses[] = 'codigo_pedido_integracao = :codigo_pedido_integracao';
+                $params['codigo_pedido_integracao'] = $this->sanitizeNullableString($data['codigo_pedido_integracao']);
+            }
+
+            $sqlProcesso = 'UPDATE processos SET ' . implode(', ', $setClauses) . ' WHERE id = :id';
+            $stmtProcesso = $this->pdo->prepare($sqlProcesso);
             $stmtProcesso->execute($params);
 
             // A lógica para atualizar os documentos também permanece a mesma
@@ -643,7 +658,7 @@ public function create($data, $files)
         $select_part = "SELECT
                     p.id, p.titulo, p.status_processo, p.data_criacao, p.data_previsao_entrega,
                     p.valor_total,
-                    p.categorias_servico, c.nome_cliente, t.nome_tradutor, p.os_numero_omie, p.os_numero_conta_azul,
+                    p.categorias_servico, c.nome_cliente, t.nome_tradutor, p.os_numero_omie, p.codigo_pedido_integracao,
                     p.data_inicio_traducao, p.traducao_prazo_data, p.traducao_prazo_dias, p.traducao_modalidade, p.assinatura_tipo,
                     p.data_envio_assinatura, p.data_devolucao_assinatura, p.data_envio_cartorio, 
                     v.nome_completo as nome_vendedor,
@@ -1006,7 +1021,7 @@ public function create($data, $files)
             'p.categorias_servico',
             'p.forma_pagamento_id',
             'p.os_numero_omie',
-            'p.os_numero_conta_azul',
+            'p.codigo_pedido_integracao',
             'p.orcamento_numero',
             'p.data_finalizacao_real',
             'c.nome_cliente AS cliente_nome',
@@ -1524,7 +1539,7 @@ public function create($data, $files)
             'status_processo', 'tradutor_id', 'data_inicio_traducao', 'traducao_modalidade',
             'traducao_prazo_tipo', 'traducao_prazo_dias', 'traducao_prazo_data',
             'assinatura_tipo', 'data_envio_assinatura', 'data_devolucao_assinatura',
-            'finalizacao_tipo', 'data_envio_cartorio', 'os_numero_conta_azul', 'os_numero_omie'
+            'finalizacao_tipo', 'data_envio_cartorio', 'codigo_pedido_integracao', 'os_numero_omie'
         ];
 
         // Adiciona a data de finalização apenas se o status for 'Concluído'
@@ -2016,14 +2031,12 @@ public function create($data, $files)
             $count = $stmt->fetchColumn() + 1;
             $orcamento_numero = $ano . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
-            $omieKeyPreview = $this->generateNextOmieKey();
-
             $sqlProcesso = "INSERT INTO processos (
                 cliente_id, colaborador_id, vendedor_id, titulo, valor_total,
-                status_processo, orcamento_numero, data_entrada, os_numero_conta_azul
+                status_processo, orcamento_numero, data_entrada, codigo_pedido_integracao
             ) VALUES (
                 :cliente_id, :colaborador_id, :vendedor_id, :titulo, :valor_total,
-                :status_processo, :orcamento_numero, :data_entrada, :os_numero_conta_azul
+                :status_processo, :orcamento_numero, :data_entrada, :codigo_pedido_integracao
             )";
             $stmtProcesso = $this->pdo->prepare($sqlProcesso);
 
@@ -2036,12 +2049,11 @@ public function create($data, $files)
                 'status_processo' => $data['status_processo'] ?? 'Orçamento',
                 'orcamento_numero'=> $orcamento_numero,
                 'data_entrada'    => date('Y-m-d'),
-                'os_numero_conta_azul' => $omieKeyPreview
+                'codigo_pedido_integracao' => $this->sanitizeNullableString($data['codigo_pedido_integracao'] ?? null)
             ];
 
             $stmtProcesso->execute($params);
             $processoId = (int)$this->pdo->lastInsertId();
-            $this->updateOmieKeyForProcessId($processoId);
 
             if ($manageTransaction) {
                 $this->pdo->commit();
@@ -2515,74 +2527,6 @@ public function create($data, $files)
         $sql = "UPDATE processos SET os_numero_omie = NULL WHERE id = ?";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([$processoId]);
-    }
-
-    /**
-     * Calcula a próxima chave curta utilizada na integração com a Omie.
-     * A sequência acompanha o ID do processo e inicia em 000010.
-     */
-    public function generateNextOmieKey(): string
-    {
-        $nextProcessId = $this->fetchNextProcessId();
-
-        return $this->formatShortOmieKey(
-            $this->calculateOmieSequenceFromProcessId($nextProcessId)
-        );
-    }
-
-    /**
-     * Persiste a chave curta definitiva da Omie utilizando o ID real do processo.
-     */
-    private function updateOmieKeyForProcessId(int $processoId): string
-    {
-        $sequenceValue = $this->calculateOmieSequenceFromProcessId($processoId);
-        $key = $this->formatShortOmieKey($sequenceValue);
-
-        $stmt = $this->pdo->prepare("UPDATE processos SET os_numero_conta_azul = ? WHERE id = ?");
-        $stmt->execute([$key, $processoId]);
-
-        return $key;
-    }
-
-    /**
-     * Converte o ID do processo para a sequência desejada pela Omie.
-     */
-    private function calculateOmieSequenceFromProcessId(int $processoId): int
-    {
-        $normalizedId = max(1, $processoId);
-        return $normalizedId + 9;
-    }
-
-    private function fetchNextProcessId(): int
-    {
-        try {
-            $stmt = $this->pdo->query("SHOW TABLE STATUS LIKE 'processos'");
-            $tableStatus = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($tableStatus && isset($tableStatus['Auto_increment'])) {
-                $nextId = (int)$tableStatus['Auto_increment'];
-                if ($nextId > 0) {
-                    return $nextId;
-                }
-            }
-        } catch (PDOException $exception) {
-            error_log('Erro ao consultar próximo ID de processo (SHOW TABLE STATUS): ' . $exception->getMessage());
-        }
-
-        try {
-            $stmt = $this->pdo->query('SELECT MAX(id) FROM processos');
-            $maxId = (int)$stmt->fetchColumn();
-            $nextId = $maxId + 1;
-            return $nextId > 0 ? $nextId : 1;
-        } catch (PDOException $exception) {
-            error_log('Erro ao consultar próximo ID de processo (MAX(id)): ' . $exception->getMessage());
-        }
-
-        return 1;
-    }
-
-    private function formatShortOmieKey(int $value): string
-    {
-        return str_pad((string)$value, 6, '0', STR_PAD_LEFT);
     }
 
     private function sanitizeNullableString($value): ?string

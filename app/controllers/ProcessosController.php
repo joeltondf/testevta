@@ -1398,6 +1398,7 @@ class ProcessosController
         $data['codigo_categoria'] = $this->sanitizeOmieString($data['codigo_categoria'] ?? null);
         $data['codigo_conta_corrente'] = $this->sanitizeOmieDigits($data['codigo_conta_corrente'] ?? null);
         $data['codigo_cenario_fiscal'] = $this->sanitizeOmieDigits($data['codigo_cenario_fiscal'] ?? null);
+        $data['codigo_pedido_integracao'] = $this->sanitizeOmieString($data['codigo_pedido_integracao'] ?? null);
 
         return $data;
     }
@@ -3102,10 +3103,10 @@ class ProcessosController
         return str_pad($digitsOnly, 2, '0', STR_PAD_LEFT);
     }
 
-    private function buildServiceOrderHeader(array $processo, array $cliente): array
+    private function buildServiceOrderHeader(array $processo, array $cliente, string $codigoIntegracao): array
     {
         return [
-            'cCodIntOS' => $this->generateOmieInternalOrderCode($processo),
+            'cCodIntOS' => $this->formatServiceOrderIntegrationCode($codigoIntegracao),
             'cCodParc' => '000',
             'cEtapa' => '10',
             'dDtPrevisao' => $this->calculateServiceForecastDate($processo),
@@ -3113,28 +3114,18 @@ class ProcessosController
             'nQtdeParc' => 1,
         ];
     }
-
-    private function generateOmieInternalOrderCode(array $processo): string
+    private function formatServiceOrderIntegrationCode(string $codigoIntegracao): string
     {
-        $shortKey = $processo['os_numero_conta_azul'] ?? null;
-        if (is_string($shortKey) && $shortKey !== '') {
-            $digitsOnly = preg_replace('/\D+/', '', $shortKey);
-            if ($digitsOnly !== '') {
-                return str_pad($digitsOnly, 6, '0', STR_PAD_LEFT);
+        $normalized = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($codigoIntegracao));
+        if ($normalized === '') {
+            try {
+                $normalized = strtoupper(bin2hex(random_bytes(6)));
+            } catch (Exception $exception) {
+                $normalized = strtoupper(dechex(mt_rand(0, 0xFFFFFF))) . strtoupper(dechex(mt_rand(0, 0xFFFFFF)));
             }
         }
 
-        $processId = isset($processo['id']) ? (int)$processo['id'] : 0;
-        if ($processId > 0) {
-            $sequenceValue = $processId + 9;
-            return str_pad((string)$sequenceValue, 6, '0', STR_PAD_LEFT);
-        }
-
-        try {
-            return (string)random_int(100000, 999999);
-        } catch (Exception $exception) {
-            return (string)mt_rand(100000, 999999);
-        }
+        return substr($normalized, 0, 20);
     }
 
     private function calculateServiceForecastDate(array $processo): string
@@ -3330,6 +3321,9 @@ class ProcessosController
                 return $processo['os_numero_omie'];
             }
 
+            $codigoIntegracao = $this->omieService->ensureCodigoPedidoIntegracao($processo);
+            $processo['codigo_pedido_integracao'] = $codigoIntegracao;
+
             // Carrega as configurações da Omie do banco de dados
             $omieServiceCode = $this->configModel->getSetting('omie_os_service_code') ?: '1.07';
             $omieCategoryCode = $this->configModel->getSetting('omie_os_category_code') ?: '1.01.02';
@@ -3350,7 +3344,7 @@ class ProcessosController
             }
 
             $payload = [
-                'Cabecalho' => $this->buildServiceOrderHeader($processo, $cliente),
+                'Cabecalho' => $this->buildServiceOrderHeader($processo, $cliente, $codigoIntegracao),
                 'Email' => $this->buildServiceOrderEmail($cliente),
                 'InformacoesAdicionais' => $this->buildServiceOrderAdditionalInfo(
                     $cliente,
