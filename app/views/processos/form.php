@@ -6,6 +6,7 @@ $return_url = $_GET['return_to'] ?? ($_SERVER['HTTP_REFERER'] ?? 'processos.php'
 // Verificamos os parâmetros que são passados pela URL após a atualização do cliente
 $fromProspeccao = isset($_GET['cliente_id']) && (isset($_GET['titulo']) || isset($_GET['prospeccao_id']));
 $processStatus = isset($processo['status_processo']) ? $processo['status_processo'] : null;
+$omieIntegrationEnabled = isset($omieIntegrationEnabled) ? (bool)$omieIntegrationEnabled : false;
 
 
 
@@ -112,6 +113,7 @@ $selectedOmieEtapa = $processo['etapa_faturamento_codigo'] ?? $formData['etapa_f
 $selectedOmieCategoria = $processo['codigo_categoria'] ?? $formData['codigo_categoria'] ?? '';
 $selectedOmieConta = $processo['codigo_conta_corrente'] ?? $formData['codigo_conta_corrente'] ?? '';
 $selectedOmieCenario = $processo['codigo_cenario_fiscal'] ?? $formData['codigo_cenario_fiscal'] ?? '';
+$codigoPedidoIntegracao = $processo['codigo_pedido_integracao'] ?? $formData['codigo_pedido_integracao'] ?? '';
 ?>
 
 <div class="flex items-center justify-between mb-6">
@@ -215,53 +217,60 @@ $selectedOmieCenario = $processo['codigo_cenario_fiscal'] ?? $formData['codigo_c
                 <?php endif; ?>
             </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-            <div>
-                <label for="etapa_faturamento_codigo" class="block text-sm font-medium text-gray-700">Etapa de Faturamento (Omie)</label>
-                <select name="etapa_faturamento_codigo" id="etapa_faturamento_codigo" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Selecionar etapa...</option>
-                    <?php foreach ($omieEtapas as $etapa): ?>
-                        <option value="<?php echo htmlspecialchars($etapa['codigo']); ?>" <?php echo ((string)$selectedOmieEtapa === (string)$etapa['codigo']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($etapa['descricao'] ?? $etapa['codigo']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+        <?php if ($omieIntegrationEnabled): ?>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
+                <div>
+                    <label for="etapa_faturamento_codigo" class="block text-sm font-medium text-gray-700">Etapa de Faturamento (Omie)</label>
+                    <select name="etapa_faturamento_codigo" id="etapa_faturamento_codigo" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Selecionar etapa...</option>
+                        <?php foreach ($omieEtapas as $etapa): ?>
+                            <option value="<?php echo htmlspecialchars($etapa['codigo']); ?>" <?php echo ((string)$selectedOmieEtapa === (string)$etapa['codigo']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($etapa['descricao'] ?? $etapa['codigo']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="codigo_categoria" class="block text-sm font-medium text-gray-700">Categoria Financeira (Omie)</label>
+                    <select name="codigo_categoria" id="codigo_categoria" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Selecionar categoria...</option>
+                        <?php foreach ($omieCategorias as $categoria): ?>
+                            <option value="<?php echo htmlspecialchars($categoria['codigo']); ?>" <?php echo ((string)$selectedOmieCategoria === (string)$categoria['codigo']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($categoria['descricao'] ?? $categoria['codigo']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="codigo_conta_corrente" class="block text-sm font-medium text-gray-700">Conta Corrente (Omie)</label>
+                    <select name="codigo_conta_corrente" id="codigo_conta_corrente" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Selecionar conta...</option>
+                        <?php foreach ($omieContasCorrentes as $conta): ?>
+                            <?php $descricaoConta = trim(($conta['descricao'] ?? '') . ' ' . (!empty($conta['codigo']) ? '(' . $conta['codigo'] . ')' : '')); ?>
+                            <option value="<?php echo htmlspecialchars($conta['codigo']); ?>" <?php echo ((string)$selectedOmieConta === (string)$conta['codigo']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($descricaoConta !== '' ? $descricaoConta : $conta['codigo']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="codigo_cenario_fiscal" class="block text-sm font-medium text-gray-700">Cenário Fiscal (Omie)</label>
+                    <select name="codigo_cenario_fiscal" id="codigo_cenario_fiscal" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Selecionar cenário...</option>
+                        <?php foreach ($omieCenariosFiscais as $cenario): ?>
+                            <option value="<?php echo htmlspecialchars($cenario['codigo']); ?>" <?php echo ((string)$selectedOmieCenario === (string)$cenario['codigo']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cenario['descricao'] ?? $cenario['codigo']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="codigo_pedido_integracao" class="block text-sm font-medium text-gray-700">Código de Integração do Pedido (Omie)</label>
+                    <input type="text" name="codigo_pedido_integracao" id="codigo_pedido_integracao" value="<?php echo htmlspecialchars($codigoPedidoIntegracao); ?>" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ex.: PED-000123">
+                    <p class="mt-1 text-xs text-gray-500">Utilize este campo para vincular orçamentos criados diretamente na Omie.</p>
+                </div>
             </div>
-            <div>
-                <label for="codigo_categoria" class="block text-sm font-medium text-gray-700">Categoria Financeira (Omie)</label>
-                <select name="codigo_categoria" id="codigo_categoria" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Selecionar categoria...</option>
-                    <?php foreach ($omieCategorias as $categoria): ?>
-                        <option value="<?php echo htmlspecialchars($categoria['codigo']); ?>" <?php echo ((string)$selectedOmieCategoria === (string)$categoria['codigo']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($categoria['descricao'] ?? $categoria['codigo']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="codigo_conta_corrente" class="block text-sm font-medium text-gray-700">Conta Corrente (Omie)</label>
-                <select name="codigo_conta_corrente" id="codigo_conta_corrente" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Selecionar conta...</option>
-                    <?php foreach ($omieContasCorrentes as $conta): ?>
-                        <?php $descricaoConta = trim(($conta['descricao'] ?? '') . ' ' . (!empty($conta['codigo']) ? '(' . $conta['codigo'] . ')' : '')); ?>
-                        <option value="<?php echo htmlspecialchars($conta['codigo']); ?>" <?php echo ((string)$selectedOmieConta === (string)$conta['codigo']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($descricaoConta !== '' ? $descricaoConta : $conta['codigo']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="codigo_cenario_fiscal" class="block text-sm font-medium text-gray-700">Cenário Fiscal (Omie)</label>
-                <select name="codigo_cenario_fiscal" id="codigo_cenario_fiscal" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Selecionar cenário...</option>
-                    <?php foreach ($omieCenariosFiscais as $cenario): ?>
-                        <option value="<?php echo htmlspecialchars($cenario['codigo']); ?>" <?php echo ((string)$selectedOmieCenario === (string)$cenario['codigo']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($cenario['descricao'] ?? $cenario['codigo']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
+        <?php endif; ?>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
                 <label for="orcamento_origem" class="block text-sm font-medium text-gray-700">Origem do Orçamento</label>
