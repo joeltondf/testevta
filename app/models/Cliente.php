@@ -737,14 +737,17 @@ public function searchAppClients($searchTerm)
     /**
      * NOVO MÉTODO: Busca os serviços e preços de um cliente mensalista.
      */
-    public function getServicosMensalista($cliente_id) {
-        // A CORREÇÃO ESTÁ AQUI: Adicionamos "cf.servico_tipo" à consulta SELECT
-        $sql = "SELECT csm.*, cf.nome_categoria, cf.servico_tipo 
+    public function getServicosMensalista($cliente_id)
+    {
+        $sql = "SELECT csm.*, cf.nome_categoria, COALESCE(csm.servico_tipo, cf.servico_tipo) AS servico_tipo
                 FROM cliente_servicos_mensalistas csm
                 JOIN categorias_financeiras cf ON csm.produto_orcamento_id = cf.id
-                WHERE csm.cliente_id = ?";
+                WHERE csm.cliente_id = ? AND csm.deleted_at IS NULL
+                ORDER BY COALESCE(csm.created_at, csm.id) ASC";
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$cliente_id]);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -752,37 +755,131 @@ public function searchAppClients($searchTerm)
     /**
      * NOVO MÉTODO: Salva a lista de serviços e preços de um cliente mensalista.
      */
-    public function salvarServicosMensalista($cliente_id, $servicos) {
-        // Primeiro, apaga a lista antiga para garantir consistência.
-        $this->pdo->prepare("DELETE FROM cliente_servicos_mensalistas WHERE cliente_id = ?")->execute([$cliente_id]);
+    public function salvarServicosMensalista($cliente_id, $servicos)
+    {
+        $now = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+        $allowedTipos = ['Tradução', 'CRC', 'Apostilamento', 'Postagem', 'Outros'];
 
-        if (empty($servicos)) {
-            return true; // Se não houver serviços, apenas termina.
-        }
+        $stmtExistentes = $this->pdo->prepare(
+            'SELECT id FROM cliente_servicos_mensalistas WHERE cliente_id = ? AND deleted_at IS NULL'
+        );
+        $stmtExistentes->execute([$cliente_id]);
+        $registrosAtuais = $stmtExistentes->fetchAll(PDO::FETCH_ASSOC);
 
-        $sql = "INSERT INTO cliente_servicos_mensalistas (cliente_id, produto_orcamento_id, valor_padrao) VALUES (?, ?, ?)";
-        $stmt = $this->pdo->prepare($sql);
+        $idsAtuais = array_map(static function ($row) {
+            return (int) ($row['id'] ?? 0);
+        }, $registrosAtuais);
+
+        $idsMantidos = [];
 
         foreach ($servicos as $servico) {
-            // Garante que apenas linhas com dados válidos sejam salvas.
-            if (!empty($servico['produto_orcamento_id']) && isset($servico['valor_padrao'])) {
-                $stmt->execute([
-                    $cliente_id,
-                    $servico['produto_orcamento_id'],
-                    $servico['valor_padrao']
-                ]);
+            $produtoId = isset($servico['produto_orcamento_id']) ? (int) $servico['produto_orcamento_id'] : 0;
+            if ($produtoId <= 0) {
+                continue;
             }
+
+            $idRegistro = isset($servico['id']) ? (int) $servico['id'] : null;
+            $valorPadrao = $this->parseDecimalValue($servico['valor_padrao'] ?? null);
+            $servicoTipo = in_array($servico['servico_tipo'] ?? '', $allowedTipos, true)
+                ? $servico['servico_tipo']
+                : 'Outros';
+            $ativo = isset($servico['ativo']) && (string) $servico['ativo'] !== '0' ? 1 : 0;
+
+            $dataInicio = !empty($servico['data_inicio']) ? $servico['data_inicio'] : null;
+            $dataFim = !empty($servico['data_fim']) ? $servico['data_fim'] : null;
+
+            if ($idRegistro && in_array($idRegistro, $idsAtuais, true)) {
+                $idsMantidos[] = $idRegistro;
+                $stmtUpdate = $this->pdo->prepare(
+                    'UPDATE cliente_servicos_mensalistas SET produto_orcamento_id = ?, valor_padrao = ?, servico_tipo = ?, ativo = ?, data_inicio = ?, data_fim = ?, updated_at = ?, deleted_at = NULL WHERE id = ?'
+                );
+                $stmtUpdate->execute([
+                    $produtoId,
+                    $valorPadrao,
+                    $servicoTipo,
+                    $ativo,
+                    $dataInicio,
+                    $dataFim,
+                    $now,
+                    $idRegistro,
+                ]);
+                continue;
+            }
+
+            $stmtInsert = $this->pdo->prepare(
+                'INSERT INTO cliente_servicos_mensalistas (cliente_id, produto_orcamento_id, valor_padrao, servico_tipo, ativo, data_inicio, data_fim, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
+            );
+            $stmtInsert->execute([
+                $cliente_id,
+                $produtoId,
+                $valorPadrao,
+                $servicoTipo,
+                $ativo,
+                $dataInicio,
+                $dataFim,
+                $now,
+                $now,
+            ]);
+
+            $idsMantidos[] = (int) $this->pdo->lastInsertId();
         }
+
+        $idsParaManter = array_filter($idsMantidos, static function ($value) {
+            return $value > 0;
+        });
+
+        $placeholders = '';
+        $params = [$now, $now, $cliente_id];
+        if (!empty($idsParaManter)) {
+            $placeholders = implode(',', array_fill(0, count($idsParaManter), '?'));
+            $params = array_merge($params, $idsParaManter);
+        }
+
+        $sqlSoftDelete = 'UPDATE cliente_servicos_mensalistas'
+            . ' SET ativo = 0, deleted_at = ?, updated_at = ?'
+            . ' WHERE cliente_id = ? AND deleted_at IS NULL';
+
+        if (!empty($idsParaManter)) {
+            $sqlSoftDelete .= ' AND id NOT IN (' . $placeholders . ')';
+        }
+
+        $stmtSoftDelete = $this->pdo->prepare($sqlSoftDelete);
+        $stmtSoftDelete->execute($params);
+
         return true;
     }
     public function getServicoContratadoPorNome($clienteId, $nomeCategoria) {
-        $sql = "SELECT csm.*, cf.nome_categoria 
+        $sql = "SELECT csm.*, cf.nome_categoria
                 FROM cliente_servicos_mensalistas csm
                 JOIN categorias_financeiras cf ON csm.produto_orcamento_id = cf.id
                 WHERE csm.cliente_id = :cliente_id AND cf.nome_categoria = :nome_categoria";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':cliente_id' => $clienteId, ':nome_categoria' => $nomeCategoria]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    private function parseDecimalValue($value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        $normalized = preg_replace('/[^0-9,\.\-]/', '', (string) $value);
+        if ($normalized === '' || $normalized === null) {
+            return null;
+        }
+
+        $hasComma = strpos($normalized, ',') !== false;
+        if ($hasComma) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : null;
     }
 
 }
