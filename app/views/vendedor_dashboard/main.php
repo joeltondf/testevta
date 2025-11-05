@@ -26,14 +26,16 @@ if (!function_exists('seller_normalize_status_info')) {
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
             'aguardando pagamento' => 'aguardando pagamento',
-            'finalizado' => 'concluído',
-            'finalizada' => 'concluído',
-            'concluido' => 'concluído',
-            'concluida' => 'concluído',
+            'finalizado' => 'finalizado',
+            'finalizada' => 'finalizado',
+            'concluido' => 'finalizado',
+            'concluida' => 'finalizado',
+            'concluído' => 'finalizado',
+            'concluída' => 'finalizado',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'cancelado',
-            'recusada' => 'cancelado',
+            'recusado' => 'recusado',
+            'recusada' => 'recusado',
         ];
 
         if (isset($aliases[$normalized])) {
@@ -46,8 +48,9 @@ if (!function_exists('seller_normalize_status_info')) {
             'serviço pendente' => 'Serviço Pendente',
             'serviço em andamento' => 'Serviço em Andamento',
             'aguardando pagamento' => 'Aguardando pagamento',
-            'concluído' => 'Concluído',
+            'finalizado' => 'Finalizado',
             'cancelado' => 'Cancelado',
+            'recusado' => 'Recusado',
         ];
 
         $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
@@ -174,7 +177,7 @@ $nextLead = $nextLead ?? null;
                 <label for="status" class="text-sm font-semibold text-gray-700 mb-1 block">Status</label>
                 <select id="status" name="status" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg">
                     <option value="">Todos os Status</option>
-                    <?php $statusOptions = ['Orçamento Pendente', 'Orçamento', 'Serviço Pendente', 'Serviço em Andamento', 'Aguardando pagamento', 'Concluído', 'Cancelado']; foreach ($statusOptions as $option): ?>
+                    <?php $statusOptions = ['Orçamento Pendente', 'Orçamento', 'Serviço Pendente', 'Serviço em Andamento', 'Aguardando pagamento', 'Finalizado', 'Cancelado', 'Recusado']; foreach ($statusOptions as $option): ?>
                         <?php $optionInfo = seller_normalize_status_info($option); ?>
                         <option value="<?php echo $optionInfo['label']; ?>" <?php echo ($selectedStatusNormalized === $optionInfo['normalized']) ? 'selected' : ''; ?>><?php echo $optionInfo['label']; ?></option>
                     <?php endforeach; ?>
@@ -238,11 +241,14 @@ $nextLead = $nextLead ?? null;
                                 case 'aguardando pagamento':
                                     $rowClass = 'bg-indigo-50 hover:bg-indigo-100';
                                     break;
-                                case 'concluído':
+                                case 'finalizado':
                                     $rowClass = 'bg-green-50 hover:bg-green-100';
                                     break;
                                 case 'cancelado':
                                     $rowClass = 'bg-red-50 hover:bg-red-100';
+                                    break;
+                                case 'recusado':
+                                    $rowClass = 'bg-red-100 hover:bg-red-200';
                                     break;
                             }
                         ?>
@@ -442,14 +448,16 @@ $nextLead = $nextLead ?? null;
                 'servico em andamento': 'serviço em andamento',
                 'em andamento': 'serviço em andamento',
                 'aguardando pagamento': 'aguardando pagamento',
-                'finalizado': 'concluído',
-                'finalizada': 'concluído',
-                'concluido': 'concluído',
-                'concluida': 'concluído',
+                'finalizado': 'finalizado',
+                'finalizada': 'finalizado',
+                'concluido': 'finalizado',
+                'concluida': 'finalizado',
+                'concluído': 'finalizado',
+                'concluída': 'finalizado',
                 'arquivado': 'cancelado',
                 'arquivada': 'cancelado',
-                'recusado': 'cancelado',
-                'recusada': 'cancelado'
+                'recusado': 'recusado',
+                'recusada': 'recusado'
             };
             return aliases[normalized] ?? normalized;
         };
@@ -467,10 +475,12 @@ $nextLead = $nextLead ?? null;
                     return 'bg-indigo-50 hover:bg-indigo-100';
                 case 'serviço pendente':
                     return 'bg-orange-50 hover:bg-orange-100';
-                case 'concluído':
+                case 'finalizado':
                     return 'bg-green-50 hover:bg-green-100';
                 case 'cancelado':
                     return 'bg-red-50 hover:bg-red-100';
+                case 'recusado':
+                    return 'bg-red-100 hover:bg-red-200';
                 default:
                     return 'hover:bg-gray-50';
             }

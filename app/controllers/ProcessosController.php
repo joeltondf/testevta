@@ -662,7 +662,7 @@ class ProcessosController
             $id = $_POST['id'];
 
             if (!empty($_POST['data_envio_cartorio'])) {
-                $_POST['status_processo'] = 'Concluído';
+                $_POST['status_processo'] = 'Finalizado';
             }
 
             // Limpa o campo de prazo que não foi selecionado
@@ -1081,8 +1081,8 @@ class ProcessosController
                 $successMessage = 'Orçamento enviado para o cliente.';
             } elseif ($newStatusNormalized === 'orçamento pendente' && $previousStatusNormalized === 'serviço pendente') {
                 $successMessage = 'Solicitação pendente recusada. Orçamento retornou para ajustes.';
-            } elseif ($newStatusNormalized === 'concluído') {
-                $successMessage = 'Processo concluído.';
+            } elseif ($newStatusNormalized === 'finalizado') {
+                $successMessage = 'Processo finalizado.';
             } elseif ($newStatusNormalized === 'cancelado') {
                 $successMessage = 'Processo cancelado.';
             } elseif ($newStatusNormalized === 'aguardando pagamento') {
@@ -1444,7 +1444,7 @@ class ProcessosController
     {
         $rawMethod = $data['orcamento_forma_pagamento'] ?? null;
         $normalizedMethod = ($rawMethod === null || $rawMethod === '')
-            ? 'Pagamento único'
+            ? 'À vista'
             : $this->normalizePaymentMethod($rawMethod);
         $data['orcamento_forma_pagamento'] = $normalizedMethod;
 
@@ -1452,7 +1452,7 @@ class ProcessosController
         $valorTotal = $this->parseCurrencyValue($totalSource);
         $valorEntrada = $this->parseCurrencyValue($data['orcamento_valor_entrada'] ?? null);
 
-        if ($normalizedMethod === 'Pagamento parcelado') {
+        if ($normalizedMethod === 'Outro') {
             if ($valorEntrada !== null) {
                 $data['orcamento_valor_entrada'] = number_format($valorEntrada, 2, '.', '');
             }
@@ -1789,8 +1789,9 @@ class ProcessosController
             'serviço pendente',
             'serviço em andamento',
             'aguardando pagamento',
-            'concluído',
+            'finalizado',
             'cancelado',
+            'recusado',
         ];
 
         return in_array($normalizedStatus, $statusPermitidos, true);
@@ -2207,7 +2208,7 @@ class ProcessosController
         $validarPagamento = $leadConversionRequested || isset($input['forma_cobranca']) || isset($input['valor_entrada']);
         if ($validarPagamento) {
             $formaCobranca = $this->normalizePaymentMethod($input['forma_cobranca'] ?? $processo['orcamento_forma_pagamento'] ?? null);
-            $formasValidas = ['Pagamento único', 'Pagamento parcelado', 'Pagamento mensal'];
+            $formasValidas = ['À vista', 'Outro', 'Mensal'];
             if (!in_array($formaCobranca, $formasValidas, true)) {
                 throw new InvalidArgumentException('Informe uma forma de cobrança válida.');
             }
@@ -2215,12 +2216,12 @@ class ProcessosController
             $valorTotal = $this->parseCurrencyValue($input['valor_total'] ?? ($processo['valor_total'] ?? null));
             $valorEntrada = $this->parseCurrencyValue($input['valor_entrada'] ?? null);
 
-            if ($formaCobranca === 'Pagamento parcelado') {
+            if ($formaCobranca === 'Outro') {
                 if ($valorTotal === null) {
-                    throw new InvalidArgumentException('Informe o valor total do processo para parcelamentos.');
+                    throw new InvalidArgumentException('Informe o valor total do processo para a forma de pagamento "Outro".');
                 }
                 if ($valorEntrada === null || $valorEntrada <= 0) {
-                    throw new InvalidArgumentException('Informe o valor pago ou de entrada.');
+                    throw new InvalidArgumentException('Informe o valor pago ou de entrada para a forma "Outro".');
                 }
                 if ($valorEntrada >= $valorTotal) {
                     throw new InvalidArgumentException('O valor de entrada deve ser menor que o valor total.');
@@ -2371,24 +2372,24 @@ class ProcessosController
 
         if ($formaCobranca === null) {
             $parcelas = $processo['orcamento_parcelas'] ?? null;
-        } elseif ($formaCobranca === 'Pagamento parcelado') {
+        } elseif ($formaCobranca === 'Outro') {
             $parcelas = 2;
         } else {
             $parcelas = 1;
         }
 
-        if ($formaCobranca !== 'Pagamento parcelado' && $valorEntrada === null && $valorTotal !== null) {
+        if ($formaCobranca !== 'Outro' && $valorEntrada === null && $valorTotal !== null) {
             $valorEntrada = $valorTotal;
         }
 
         $valorRestante = null;
-        if ($formaCobranca === 'Pagamento parcelado' && $valorTotal !== null && $valorEntrada !== null) {
+        if ($formaCobranca === 'Outro' && $valorTotal !== null && $valorEntrada !== null) {
             $valorRestante = max($valorTotal - $valorEntrada, 0);
         }
 
         $dataPagamento1 = $input['data_pagamento_1'] ?? $processo['data_pagamento_1'] ?? null;
         $dataPagamento2 = $input['data_pagamento_2'] ?? $processo['data_pagamento_2'] ?? null;
-        if ($formaCobranca !== 'Pagamento parcelado') {
+        if ($formaCobranca !== 'Outro') {
             $dataPagamento2 = null;
             $valorRestante = $valorTotal !== null ? 0.0 : null;
         }
@@ -2574,20 +2575,25 @@ class ProcessosController
     private function normalizePaymentMethod(?string $method): string
     {
         $normalized = mb_strtolower(trim((string)$method));
+
+        if ($normalized === '') {
+            return 'À vista';
+        }
+
         switch ($normalized) {
-            case 'pagamento parcelado':
-            case 'parcelado':
-                return 'Pagamento parcelado';
-            case 'pagamento mensal':
             case 'mensal':
-                return 'Pagamento mensal';
-            case 'pagamento único':
-            case 'pagamento unico':
+            case 'pagamento mensal':
+                return 'Mensal';
+            case 'outro':
+            case 'parcelado':
+            case 'pagamento parcelado':
+                return 'Outro';
             case 'à vista':
             case 'a vista':
-                return 'Pagamento único';
+            case 'pagamento único':
+            case 'pagamento unico':
             default:
-                return 'Pagamento único';
+                return 'À vista';
         }
     }
 
@@ -2598,13 +2604,13 @@ class ProcessosController
         }
 
         switch ($this->normalizePaymentMethod($method)) {
-            case 'Pagamento parcelado':
-                return 'parcelado';
-            case 'Pagamento mensal':
-                return 'Pagamento mensal';
-            case 'Pagamento único':
+            case 'Mensal':
+                return 'Mensal';
+            case 'Outro':
+                return 'Outro';
+            case 'À vista':
             default:
-                return 'Pagamento único';
+                return 'À vista';
         }
     }
 
@@ -2626,14 +2632,16 @@ class ProcessosController
             'serviço em andamento' => 'serviço em andamento',
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
-            'finalizado' => 'concluído',
-            'finalizada' => 'concluído',
-            'concluido' => 'concluído',
-            'concluida' => 'concluído',
+            'finalizado' => 'finalizado',
+            'finalizada' => 'finalizado',
+            'concluido' => 'finalizado',
+            'concluida' => 'finalizado',
+            'concluído' => 'finalizado',
+            'concluída' => 'finalizado',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'cancelado',
-            'recusada' => 'cancelado',
+            'recusado' => 'recusado',
+            'recusada' => 'recusado',
         ];
 
         return $aliases[$normalized] ?? $normalized;
@@ -2683,10 +2691,12 @@ class ProcessosController
                 return 'bg-cyan-100 text-cyan-800';
             case 'aguardando pagamento':
                 return 'bg-indigo-100 text-indigo-800';
-            case 'concluído':
+            case 'finalizado':
                 return 'bg-green-100 text-green-800';
             case 'cancelado':
                 return 'bg-red-100 text-red-800';
+            case 'recusado':
+                return 'bg-red-200 text-red-900';
             default:
                 return 'bg-gray-100 text-gray-800';
         }
@@ -2740,7 +2750,7 @@ class ProcessosController
         }
 
         $normalized = $this->normalizeStatusName($status);
-        $serviceStatuses = ['serviço pendente', 'serviço em andamento', 'aguardando pagamento', 'concluído'];
+        $serviceStatuses = ['serviço pendente', 'serviço em andamento', 'aguardando pagamento', 'finalizado'];
 
         return in_array($normalized, $serviceStatuses, true);
     }

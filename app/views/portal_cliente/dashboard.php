@@ -19,14 +19,16 @@ if (!function_exists('client_portal_normalize_status_info')) {
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
             'aguardando pagamento' => 'aguardando pagamento',
-            'finalizado' => 'concluído',
-            'finalizada' => 'concluído',
-            'concluido' => 'concluído',
-            'concluida' => 'concluído',
+            'finalizado' => 'finalizado',
+            'finalizada' => 'finalizado',
+            'concluido' => 'finalizado',
+            'concluida' => 'finalizado',
+            'concluído' => 'finalizado',
+            'concluída' => 'finalizado',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'cancelado',
-            'recusada' => 'cancelado',
+            'recusado' => 'recusado',
+            'recusada' => 'recusado',
         ];
 
         if (isset($aliases[$normalized])) {
@@ -39,8 +41,9 @@ if (!function_exists('client_portal_normalize_status_info')) {
             'serviço pendente' => 'Serviço Pendente',
             'serviço em andamento' => 'Serviço em Andamento',
             'aguardando pagamento' => 'Aguardando pagamento',
-            'concluído' => 'Concluído',
+            'finalizado' => 'Finalizado',
             'cancelado' => 'Cancelado',
+            'recusado' => 'Recusado',
         ];
 
         $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
@@ -71,10 +74,13 @@ if (!function_exists('client_portal_calculate_overview')) {
                 case 'aguardando pagamento':
                     $summary['pending']++;
                     break;
-                case 'concluído':
+                case 'finalizado':
                     $summary['completed']++;
                     break;
                 case 'cancelado':
+                    $summary['cancelled']++;
+                    break;
+                case 'recusado':
                     $summary['cancelled']++;
                     break;
                 default:
@@ -131,7 +137,7 @@ $hasProcessos = !empty($processosList);
             <p class="mt-2 text-3xl font-semibold text-indigo-500"><?php echo $overview['inProgress']; ?></p>
         </article>
         <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-            <p class="text-sm font-medium text-gray-500">Concluídos</p>
+            <p class="text-sm font-medium text-gray-500">Finalizados</p>
             <p class="mt-2 text-3xl font-semibold text-emerald-500"><?php echo $overview['completed']; ?></p>
         </article>
     </div>
@@ -196,11 +202,14 @@ $hasProcessos = !empty($processosList);
                                         case 'aguardando pagamento':
                                             $statusClasses = 'bg-indigo-200 text-indigo-900';
                                             break;
-                                        case 'concluído':
+                                        case 'finalizado':
                                             $statusClasses = 'bg-green-100 text-green-800';
                                             break;
                                         case 'cancelado':
                                             $statusClasses = 'bg-red-100 text-red-800';
+                                            break;
+                                        case 'recusado':
+                                            $statusClasses = 'bg-red-200 text-red-900';
                                             break;
                                     }
 

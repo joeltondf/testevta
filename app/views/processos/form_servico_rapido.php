@@ -493,9 +493,9 @@ $codigoPedidoIntegracao = $formData['codigo_pedido_integracao'] ?? '';
                 <div>
                     <label for="billing_type" class="block text-sm font-medium text-gray-700">Forma de Cobrança</label>
                     <select name="orcamento_forma_pagamento" id="billing_type" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                        <option value="Pagamento único">Pagamento único</option>
-                        <option value="Pagamento parcelado">Pagamento parcelado</option>
-                        <option value="Pagamento mensal">Pagamento mensal</option>
+                        <option value="À vista">À vista</option>
+                        <option value="Outro">Outro</option>
+                        <option value="Mensal">Mensal</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
@@ -504,8 +504,8 @@ $codigoPedidoIntegracao = $formData['codigo_pedido_integracao'] ?? '';
                 </div>
             </div>
 
-            <div class="space-y-4" data-billing-section="Pagamento único">
-                <h3 class="text-md font-semibold text-gray-800">Pagamento único</h3>
+            <div class="space-y-4" data-billing-section="À vista">
+                <h3 class="text-md font-semibold text-gray-800">Pagamento à vista</h3>
                 <p class="text-sm text-gray-600">O valor recebido será igual ao total calculado do serviço.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -526,8 +526,8 @@ $codigoPedidoIntegracao = $formData['codigo_pedido_integracao'] ?? '';
                 </div>
             </div>
 
-            <div class="space-y-4 hidden" data-billing-section="Pagamento parcelado">
-                <h3 class="text-md font-semibold text-gray-800">Pagamento parcelado</h3>
+            <div class="space-y-4 hidden" data-billing-section="Outro">
+                <h3 class="text-md font-semibold text-gray-800">Outra forma de pagamento</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div id="entrada-wrapper">
                         <label class="block text-sm font-medium text-gray-700" for="billing_parcelado_entrada">Valor da 1ª parcela</label>
@@ -572,7 +572,7 @@ $codigoPedidoIntegracao = $formData['codigo_pedido_integracao'] ?? '';
                 </div>
             </div>
 
-            <div class="space-y-4 hidden" data-billing-section="Pagamento mensal">
+            <div class="space-y-4 hidden" data-billing-section="Mensal">
                 <h3 class="text-md font-semibold text-gray-800">Pagamento mensal</h3>
                 <p class="text-sm text-gray-600">A primeira cobrança será igual ao valor total calculado para o período.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

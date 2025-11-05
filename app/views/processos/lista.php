@@ -21,14 +21,16 @@ if (!function_exists('process_list_normalize_status')) {
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
             'aguardando pagamento' => 'aguardando pagamento',
-            'finalizado' => 'concluído',
-            'finalizada' => 'concluído',
-            'concluido' => 'concluído',
-            'concluida' => 'concluído',
+            'finalizado' => 'finalizado',
+            'finalizada' => 'finalizado',
+            'concluido' => 'finalizado',
+            'concluida' => 'finalizado',
+            'concluído' => 'finalizado',
+            'concluída' => 'finalizado',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'cancelado',
-            'recusada' => 'cancelado',
+            'recusado' => 'recusado',
+            'recusada' => 'recusado',
         ];
 
         if (isset($aliases[$normalized])) {
@@ -41,8 +43,9 @@ if (!function_exists('process_list_normalize_status')) {
             'serviço pendente' => 'Serviço Pendente',
             'serviço em andamento' => 'Serviço em Andamento',
             'aguardando pagamento' => 'Aguardando pagamento',
-            'concluído' => 'Concluído',
+            'finalizado' => 'Finalizado',
             'cancelado' => 'Cancelado',
+            'recusado' => 'Recusado',
         ];
 
         $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
@@ -112,11 +115,14 @@ if (session_status() == PHP_SESSION_NONE) {
                                 case 'aguardando pagamento':
                                     $statusClasses = 'bg-indigo-200 text-indigo-900';
                                     break;
-                                case 'concluído':
+                                case 'finalizado':
                                     $statusClasses = 'bg-green-200 text-green-900';
                                     break;
                                 case 'cancelado':
                                     $statusClasses = 'bg-red-200 text-red-900';
+                                    break;
+                                case 'recusado':
+                                    $statusClasses = 'bg-red-300 text-red-900';
                                     break;
                             }
                             ?>
