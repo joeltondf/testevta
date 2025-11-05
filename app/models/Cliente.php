@@ -399,7 +399,11 @@ class Cliente
      */
     public function create($data)
     {
-        $this->pdo->beginTransaction();
+        $manageTransaction = !$this->pdo->inTransaction();
+
+        if ($manageTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
         try {
             $cpf_cnpj = empty($data['cpf_cnpj']) ? null : $data['cpf_cnpj'];
@@ -519,15 +523,19 @@ class Cliente
             $stmt->execute($params);
 
             $newClientId = $this->pdo->lastInsertId();
-            $this->pdo->commit();
+            if ($manageTransaction) {
+                $this->pdo->commit();
+            }
             return $newClientId;
 
         } catch (Exception $e) {
-            $this->pdo->rollBack();
+            if ($manageTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             if ($e->getMessage() === 'error_duplicate_cpf_cnpj') {
                 return 'error_duplicate_cpf_cnpj';
             }
-            
+
             error_log("Erro ao criar cliente: " . $e->getMessage());
             if (session_status() == PHP_SESSION_NONE) { session_start(); }
             $_SESSION['error_message'] = "Ocorreu um erro ao criar o cliente: " . $e->getMessage();

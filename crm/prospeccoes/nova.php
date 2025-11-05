@@ -15,8 +15,8 @@ $leadVendorId = null;
 $leadVendorName = null;
 $paymentProfileOptions = [
     '' => 'Selecione uma opção',
-    'mensalista' => 'Possível mensalista',
-    'avista' => 'Possível à vista',
+    'Mensalista' => 'Possível mensalista',
+    'À vista' => 'Possível à vista',
 ];
 
 try {

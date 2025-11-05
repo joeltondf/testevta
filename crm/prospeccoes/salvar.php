@@ -18,10 +18,18 @@ if (!$clienteId) {
 }
 
 $paymentProfileRaw = $_POST['perfil_pagamento'] ?? '';
-$paymentProfile = is_string($paymentProfileRaw) ? mb_strtolower(trim($paymentProfileRaw), 'UTF-8') : '';
-$allowedPaymentProfiles = ['mensalista', 'avista'];
+$paymentProfileMap = [
+    'mensalista' => 'Mensalista',
+    'mensal' => 'Mensalista',
+    'à vista' => 'À vista',
+    'a vista' => 'À vista',
+    'avista' => 'À vista',
+];
 
-if (!in_array($paymentProfile, $allowedPaymentProfiles, true)) {
+$normalizedProfile = is_string($paymentProfileRaw) ? mb_strtolower(trim($paymentProfileRaw), 'UTF-8') : '';
+$paymentProfile = $paymentProfileMap[$normalizedProfile] ?? null;
+
+if ($paymentProfile === null) {
     $_SESSION['error_message'] = 'Selecione um perfil de pagamento válido.';
     header('Location: ' . APP_URL . '/crm/prospeccoes/nova.php');
     exit();
@@ -33,6 +41,7 @@ $userNome = $_SESSION['user_nome'] ?? 'Usuário';
 
 $prospectionModel = new Prospeccao($pdo);
 $userModel = new User($pdo);
+$leadDistributor = new LeadDistributor($pdo);
 
 try {
     $stmtCliente = $pdo->prepare(
@@ -157,6 +166,7 @@ try {
 
     $prospectionId = (int) $pdo->lastInsertId();
     $prospectionModel->logInteraction($prospectionId, $userId, sprintf('Prospecção criada por %s.', $userNome));
+    $leadDistributor->enqueueProspection($prospectionId);
 
     $distributionSummary = null;
     $distributionWarning = null;
@@ -180,7 +190,6 @@ try {
         $distributionSummary = ['vendorName' => $vendorName];
     } elseif ($shouldDistributeNow) {
         try {
-            $leadDistributor = new LeadDistributor($pdo);
             $distributionSummary = $leadDistributor->distributeToNextSalesperson($prospectionId, $userId);
             $interactionText = sprintf('Lead distribuído automaticamente para %s via round-robin.', $distributionSummary['vendorName']);
             $prospectionModel->logInteraction($prospectionId, $userId, $interactionText);

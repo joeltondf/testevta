@@ -162,9 +162,23 @@ try {
             $leadCategory = 'Entrada';
         }
 
-        $allowedPaymentProfiles = ['mensalista', 'avista'];
-        $paymentProfile = $_POST['perfil_pagamento'] ?? '';
-        $paymentProfile = in_array($paymentProfile, $allowedPaymentProfiles, true) ? $paymentProfile : null;
+        $allowedPaymentProfiles = ['Mensalista', 'À vista'];
+        $paymentProfileAliases = [
+            'mensalista' => 'Mensalista',
+            'mensal' => 'Mensalista',
+            'à vista' => 'À vista',
+            'a vista' => 'À vista',
+            'avista' => 'À vista',
+        ];
+        $paymentProfileInput = $_POST['perfil_pagamento'] ?? '';
+        $paymentProfile = null;
+        if (is_string($paymentProfileInput) && $paymentProfileInput !== '') {
+            $normalizedInput = mb_strtolower(trim($paymentProfileInput), 'UTF-8');
+            $resolvedProfile = $paymentProfileAliases[$normalizedInput] ?? null;
+            if ($resolvedProfile !== null && in_array($resolvedProfile, $allowedPaymentProfiles, true)) {
+                $paymentProfile = $resolvedProfile;
+            }
+        }
 
         $currentProspection = $prospectionModel->getById($prospeccao_id);
         if (!$currentProspection) {
@@ -213,10 +227,21 @@ try {
         $profileLabels = [
             null => 'Não informado',
             '' => 'Não informado',
-            'mensalista' => 'Possível mensalista',
-            'avista' => 'Possível à vista'
+            'Mensalista' => 'Possível mensalista',
+            'À vista' => 'Possível à vista'
         ];
-        $normalizedOldProfile = in_array($oldPaymentProfile, $allowedPaymentProfiles, true) ? $oldPaymentProfile : null;
+        $normalizedOldProfile = null;
+        if (is_string($oldPaymentProfile) && $oldPaymentProfile !== '') {
+            if (in_array($oldPaymentProfile, $allowedPaymentProfiles, true)) {
+                $normalizedOldProfile = $oldPaymentProfile;
+            } else {
+                $oldKey = mb_strtolower(trim($oldPaymentProfile), 'UTF-8');
+                $resolvedOld = $paymentProfileAliases[$oldKey] ?? null;
+                if ($resolvedOld !== null && in_array($resolvedOld, $allowedPaymentProfiles, true)) {
+                    $normalizedOldProfile = $resolvedOld;
+                }
+            }
+        }
         if ($normalizedOldProfile !== $paymentProfile) {
             $changes[] = sprintf(
                 'Perfil de pagamento atualizado de %s para %s.',

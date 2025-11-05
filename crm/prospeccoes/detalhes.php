@@ -120,12 +120,21 @@ if (!in_array($currentLeadCategory, $leadCategories, true)) {
     $currentLeadCategory = 'Entrada';
 }
 $paymentProfileOptions = [
-    'mensalista' => 'Possível mensalista',
-    'avista' => 'Possível à vista',
+    'Mensalista' => 'Possível mensalista',
+    'À vista' => 'Possível à vista',
+];
+$profileAliasMap = [
+    'mensalista' => 'Mensalista',
+    'mensal' => 'Mensalista',
+    'à vista' => 'À vista',
+    'a vista' => 'À vista',
+    'avista' => 'À vista',
 ];
 $currentPaymentProfile = $prospect['perfil_pagamento'] ?? '';
-if (!in_array($currentPaymentProfile, array_keys($paymentProfileOptions), true)) {
-    $currentPaymentProfile = '';
+if ($currentPaymentProfile !== '' && !array_key_exists($currentPaymentProfile, $paymentProfileOptions)) {
+    $normalizedProfile = mb_strtolower(trim((string)$currentPaymentProfile), 'UTF-8');
+    $resolvedProfile = $profileAliasMap[$normalizedProfile] ?? '';
+    $currentPaymentProfile = array_key_exists($resolvedProfile, $paymentProfileOptions) ? $resolvedProfile : '';
 }
 $redirectUrl = APP_URL . '/crm/prospeccoes/detalhes.php?id=' . $prospect['id'];
 
