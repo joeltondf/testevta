@@ -1873,7 +1873,7 @@ class ProcessosController
             $tipoAssessoria = 'À vista';
         }
 
-        $prazoDias = $input['lead_agreed_deadline_days'] ?? null;
+        $prazoDias = $input['lead_legalization_deadline_days'] ?? ($input['lead_agreed_deadline_days'] ?? null);
         $prazoDias = ($prazoDias === null || $prazoDias === '') ? null : (int)$prazoDias;
 
         $cidadeValidation = $input['lead_city_validation_source'] ?? 'api';
@@ -1884,7 +1884,7 @@ class ProcessosController
         return [
             'tipo_pessoa' => $tipoPessoa,
             'tipo_assessoria' => $tipoAssessoria,
-            'prazo_acordado_dias' => $prazoDias,
+            'prazo_legalizacao_dias' => $prazoDias,
             'nome_cliente' => trim((string)($input['lead_nome_cliente'] ?? '')),
             'nome_responsavel' => $tipoPessoa === 'Jurídica' ? trim((string)($input['lead_nome_responsavel'] ?? '')) : null,
             'cpf_cnpj' => $this->sanitizeDigits($input['lead_cpf_cnpj'] ?? ''),
@@ -1945,9 +1945,9 @@ class ProcessosController
             $erros[] = 'Informe a UF da cidade selecionada.';
         }
 
-        $prazo = $input['lead_agreed_deadline_days'] ?? null;
+        $prazo = $input['lead_legalization_deadline_days'] ?? ($input['lead_agreed_deadline_days'] ?? null);
         if ($prazo !== null && $prazo !== '' && (!ctype_digit((string)$prazo) || (int)$prazo <= 0)) {
-            $erros[] = 'O prazo acordado deve ser um número inteiro maior que zero.';
+            $erros[] = 'O prazo de legalização deve ser um número inteiro maior que zero.';
         }
 
         $fonteCidade = $input['lead_city_validation_source'] ?? 'api';
@@ -1997,7 +1997,7 @@ class ProcessosController
     private function updateClienteRecord(int $clienteId, array $clienteData, array $registroAtual): void
     {
         $campos = [
-            'tipo_pessoa', 'tipo_assessoria', 'prazo_acordado_dias', 'nome_cliente',
+            'tipo_pessoa', 'tipo_assessoria', 'prazo_legalizacao_dias', 'nome_cliente',
             'nome_responsavel', 'email', 'telefone', 'endereco', 'numero', 'complemento',
             'bairro', 'cidade', 'estado', 'cep', 'cidade_validation_source',
         ];
@@ -2007,7 +2007,7 @@ class ProcessosController
 
         foreach ($campos as $campo) {
             $valor = $clienteData[$campo] ?? null;
-            if ($campo === 'prazo_acordado_dias') {
+            if ($campo === 'prazo_legalizacao_dias') {
                 $valor = $valor === null ? null : (int)$valor;
             }
             if ($campo === 'nome_responsavel' && $clienteData['tipo_pessoa'] === 'Física') {
@@ -2037,12 +2037,12 @@ class ProcessosController
         $sql = 'INSERT INTO clientes (
             nome_cliente, nome_responsavel, cpf_cnpj, email, telefone, endereco, numero,
             complemento, bairro, cidade, estado, cep, tipo_pessoa, tipo_assessoria,
-            prazo_acordado_dias, cidade_validation_source, data_conversao, usuario_conversao_id,
+            prazo_legalizacao_dias, cidade_validation_source, data_conversao, usuario_conversao_id,
             is_prospect, data_cadastro
         ) VALUES (
             :nome_cliente, :nome_responsavel, :cpf_cnpj, :email, :telefone, :endereco, :numero,
             :complemento, :bairro, :cidade, :estado, :cep, :tipo_pessoa, :tipo_assessoria,
-            :prazo_acordado_dias, :cidade_validation_source, :data_conversao, :usuario_conversao_id,
+            :prazo_legalizacao_dias, :cidade_validation_source, :data_conversao, :usuario_conversao_id,
             0, NOW()
         )';
 
@@ -2062,7 +2062,7 @@ class ProcessosController
             ':cep' => $clienteData['cep'] ?: null,
             ':tipo_pessoa' => $clienteData['tipo_pessoa'],
             ':tipo_assessoria' => $clienteData['tipo_assessoria'],
-            ':prazo_acordado_dias' => $clienteData['prazo_acordado_dias'],
+            ':prazo_legalizacao_dias' => $clienteData['prazo_legalizacao_dias'],
             ':cidade_validation_source' => $clienteData['cidade_validation_source'],
             ':data_conversao' => $clienteData['data_conversao'],
             ':usuario_conversao_id' => $clienteData['usuario_conversao_id'],

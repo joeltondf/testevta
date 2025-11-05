@@ -88,9 +88,9 @@ class Cliente
                 }
             }
             
-            $prazoAcordadoDias = array_key_exists('prazo_acordado_dias', $data)
-                ? $data['prazo_acordado_dias']
-                : ($clienteAtual['prazo_acordado_dias'] ?? null);
+            $prazoLegalizacaoDias = array_key_exists('prazo_legalizacao_dias', $data)
+                ? $data['prazo_legalizacao_dias']
+                : ($clienteAtual['prazo_legalizacao_dias'] ?? null);
 
             $setParts = [
                 'nome_cliente = ?',
@@ -106,7 +106,7 @@ class Cliente
                 'cep = ?',
                 'tipo_pessoa = ?',
                 'tipo_assessoria = ?',
-                'prazo_acordado_dias = ?',
+                'prazo_legalizacao_dias = ?',
                 'user_id = ?',
             ];
 
@@ -124,7 +124,7 @@ class Cliente
                 $data['cep'] ?? null,
                 $data['tipo_pessoa'] ?? 'Jurídica',
                 $data['tipo_assessoria'] ?? null,
-                $prazoAcordadoDias,
+                $prazoLegalizacaoDias,
                 $userId,
             ];
 
@@ -435,7 +435,7 @@ class Cliente
                 'cep',
                 'tipo_pessoa',
                 'tipo_assessoria',
-                'prazo_acordado_dias',
+                'prazo_legalizacao_dias',
                 'user_id',
                 'is_prospect',
             ];
@@ -454,7 +454,7 @@ class Cliente
                 ':cep',
                 ':tipo_pessoa',
                 ':tipo_assessoria',
-                ':prazo_acordado_dias',
+                ':prazo_legalizacao_dias',
                 ':user_id',
                 ':is_prospect',
             ];
@@ -473,7 +473,7 @@ class Cliente
                 ':cep' => $data['cep'] ?? null,
                 ':tipo_pessoa' => $data['tipo_pessoa'] ?? 'Jurídica',
                 ':tipo_assessoria' => $data['tipo_assessoria'] ?? null,
-                ':prazo_acordado_dias' => $data['prazo_acordado_dias'] ?? null,
+                ':prazo_legalizacao_dias' => $data['prazo_legalizacao_dias'] ?? null,
                 ':user_id' => $userId,
                 ':is_prospect' => 0,
             ];
