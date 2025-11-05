@@ -126,7 +126,7 @@ $_SESSION['import_summary'] = [
 if ($createdCount > 0) {
     $_SESSION['success_message'] = "Importação concluída: {$createdCount} lead(s) criado(s).";
 } else {
-    $_SESSION['success_message'] = 'Processo concluído sem novos leads adicionados.';
+    $_SESSION['success_message'] = 'Processo finalizado sem novos leads adicionados.';
 }
 
 header('Location: ' . APP_URL . '/crm/clientes/lista.php');

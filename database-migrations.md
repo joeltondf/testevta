@@ -69,7 +69,7 @@ CREATE INDEX `idx_processos_data_inicio_traducao` ON `processos` (`data_inicio_t
 ```sql
 ALTER TABLE `processos`
   MODIFY COLUMN `status_processo`
-    ENUM('Orçamento Pendente','Orçamento','Serviço Pendente','Serviço em Andamento','Concluído','Cancelado')
+    ENUM('Orçamento','Orçamento Pendente','Serviço Pendente','Serviço em Andamento','Finalizado','Cancelado','Recusado')
     DEFAULT 'Orçamento';
 ```
 
@@ -79,8 +79,8 @@ Execute os comandos abaixo para alinhar registros antigos aos novos rótulos pad
 
 ```sql
 UPDATE `processos`
-   SET `status_processo` = 'Concluído'
- WHERE `status_processo` IN ('Finalizado','Finalizada','Concluido','Concluida');
+   SET `status_processo` = 'Finalizado'
+ WHERE `status_processo` IN ('Concluído','Concluido','Concluida','Finalizada');
 
 UPDATE `processos`
    SET `status_processo` = 'Serviço em Andamento'
@@ -93,6 +93,10 @@ UPDATE `processos`
 UPDATE `processos`
    SET `status_processo` = 'Cancelado'
  WHERE `status_processo` IN ('Arquivado','Arquivada','Recusado','Recusada');
+
+UPDATE `processos`
+   SET `status_processo` = 'Recusado'
+ WHERE `status_processo` IN ('Reprovado','Reprovada');
 ```
 
 ## Exemplos de uso

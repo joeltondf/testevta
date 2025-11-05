@@ -304,7 +304,7 @@ $formatPeriod = static function (string $period, string $mode): string {
                             $secondPaymentRaw = $processo['data_pagamento_2'] ?? null;
                             $secondPaymentDate = $formatDate($secondPaymentRaw);
                             $needsSecondParcel = $hasSecondParcel && $rawValorRestanteNumeric > 0.01;
-                            $parcelLabel = $parcelCount === 1 ? 'Pagamento único' : sprintf('%d parcelas', $parcelCount);
+                            $parcelLabel = $parcelCount === 1 ? 'À vista' : sprintf('%d parcelas', $parcelCount);
                             ?>
                             <tr data-process-id="<?= htmlspecialchars((string) $processId, ENT_QUOTES, 'UTF-8'); ?>">
                                 <td class="px-3 py-2 font-medium text-gray-900">
