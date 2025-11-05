@@ -62,6 +62,25 @@ if (!function_exists('seller_normalize_status_info')) {
 $selectedStatusInfo = seller_normalize_status_info($filters['status'] ?? '');
 $selectedStatusNormalized = $selectedStatusInfo['normalized'];
 $nextLead = $nextLead ?? null;
+$vendorKanbanStatuses = $vendorKanbanStatuses ?? [];
+$vendorKanbanLeads = $vendorKanbanLeads ?? [];
+$selectedKanbanStatuses = $selectedKanbanStatuses ?? $vendorKanbanStatuses;
+$kanbanFilterOptions = $kanbanFilterOptions ?? [
+    'status_options' => $vendorKanbanStatuses,
+    'sdr_options' => [],
+    'payment_profiles' => [],
+    'selected_sdr_id' => null,
+    'selected_payment_profile' => null,
+    'only_unassigned' => false,
+];
+$qualificationMetrics = $qualificationMetrics ?? ['qualified' => 0, 'discarded' => 0, 'converted' => 0];
+$vendorKanbanAction = $dashboardVendedorUrl;
+$selectedSdrId = $kanbanFilterOptions['selected_sdr_id'] ?? null;
+$selectedPaymentProfile = $kanbanFilterOptions['selected_payment_profile'] ?? null;
+$onlyUnassigned = !empty($kanbanFilterOptions['only_unassigned']);
+$statusOptions = $kanbanFilterOptions['status_options'] ?? $vendorKanbanStatuses;
+$sdrOptions = $kanbanFilterOptions['sdr_options'] ?? [];
+$paymentProfiles = $kanbanFilterOptions['payment_profiles'] ?? [];
 ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
@@ -130,6 +149,104 @@ $nextLead = $nextLead ?? null;
         </div>
     </div>
 </div>
+
+<?php if (!empty($vendorKanbanStatuses)): ?>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800">Kanban de oportunidades</h2>
+                <p class="text-sm text-gray-500">Filtre por etapa, SDR ou perfil de pagamento para focar nas prioridades certas.</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                Qualificados: <span class="font-semibold text-blue-600"><?php echo (int) ($qualificationMetrics['qualified'] ?? 0); ?></span>
+                • Convertidos: <span class="font-semibold text-green-600"><?php echo (int) ($qualificationMetrics['converted'] ?? 0); ?></span>
+                • Descartados: <span class="font-semibold text-gray-600"><?php echo (int) ($qualificationMetrics['discarded'] ?? 0); ?></span>
+            </div>
+        </div>
+        <form method="get" action="<?php echo htmlspecialchars($vendorKanbanAction); ?>" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Etapas visíveis</label>
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    <?php foreach ($statusOptions as $statusOption): ?>
+                        <?php $checked = in_array($statusOption, $selectedKanbanStatuses, true); ?>
+                        <label class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-300">
+                            <input type="checkbox" name="kanban_status[]" value="<?php echo htmlspecialchars($statusOption); ?>" class="mr-2" <?php echo $checked ? 'checked' : ''; ?>>
+                            <?php echo htmlspecialchars($statusOption); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <div>
+                <label for="kanban_sdr_id" class="block text-sm font-semibold text-gray-700 mb-2">Filtrar por SDR</label>
+                <select id="kanban_sdr_id" name="kanban_sdr_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                    <?php foreach ($sdrOptions as $sdr): ?>
+                        <?php $value = (int) ($sdr['id'] ?? 0); ?>
+                        <option value="<?php echo $value; ?>" <?php echo ($selectedSdrId !== null && (int)$selectedSdrId === $value) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($sdr['nome_completo'] ?? 'SDR'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label for="kanban_payment_profile" class="block text-sm font-semibold text-gray-700 mb-2">Perfil de pagamento</label>
+                <select id="kanban_payment_profile" name="kanban_payment_profile" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                    <?php foreach ($paymentProfiles as $profile): ?>
+                        <option value="<?php echo htmlspecialchars($profile); ?>" <?php echo ($selectedPaymentProfile && strcasecmp($selectedPaymentProfile, $profile) === 0) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($profile); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Escopo</label>
+                <label class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-300">
+                    <input type="checkbox" name="kanban_scope" value="unassigned" class="mr-2" <?php echo $onlyUnassigned ? 'checked' : ''; ?>>
+                    Mostrar leads sem responsável
+                </label>
+            </div>
+            <div class="md:col-span-4 flex items-center gap-3 justify-end">
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-filter mr-2"></i> Aplicar
+                </button>
+                <a href="<?php echo htmlspecialchars($vendorKanbanAction); ?>" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-undo mr-2"></i> Limpar
+                </a>
+            </div>
+        </form>
+        <div class="kanban-board" style="display:flex; gap:1.5rem; overflow-x:auto; padding-bottom:1rem;">
+            <?php foreach ($selectedKanbanStatuses as $status): ?>
+                <?php $cards = $vendorKanbanLeads[$status] ?? []; ?>
+                <section class="flex-0 bg-gray-50 border border-gray-200 rounded-lg min-w-[280px]">
+                    <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+                        <span class="text-sm font-semibold"><?php echo htmlspecialchars($status); ?></span>
+                        <span class="text-xs bg-white bg-opacity-20 px-2 py-1 rounded-full"><?php echo count($cards); ?></span>
+                    </header>
+                    <div class="p-4 space-y-3">
+                        <?php if (empty($cards)): ?>
+                            <p class="text-sm text-gray-400 text-center py-4">Sem leads nesta etapa.</p>
+                        <?php else: ?>
+                            <?php foreach ($cards as $lead): ?>
+                                <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-3">
+                                    <h3 class="text-sm font-semibold text-gray-800 mb-1"><?php echo htmlspecialchars($lead['nome_prospecto'] ?? 'Lead'); ?></h3>
+                                    <p class="text-xs text-gray-500">Cliente: <?php echo htmlspecialchars($lead['nome_cliente'] ?? 'Não informado'); ?></p>
+                                    <?php if (!empty($lead['data_ultima_atualizacao'])): ?>
+                                        <p class="text-[11px] text-gray-400 mt-1">Atualizado em <?php echo date('d/m/Y H:i', strtotime($lead['data_ultima_atualizacao'])); ?></p>
+                                    <?php endif; ?>
+                                    <div class="mt-3 flex items-center gap-2">
+                                        <a href="<?php echo $baseAppUrl; ?>/crm/prospeccoes/detalhes.php?id=<?php echo (int) ($lead['id'] ?? 0); ?>" class="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Detalhes</a>
+                                        <a href="<?php echo $baseAppUrl; ?>/qualificacao.php?action=create&amp;id=<?php echo (int) ($lead['id'] ?? 0); ?>" class="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Registrar avanço</a>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </section>
+            <?php endforeach; ?>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
     <div class="lg:col-span-2 bg-white p-5 rounded-lg shadow-xl border border-gray-200">

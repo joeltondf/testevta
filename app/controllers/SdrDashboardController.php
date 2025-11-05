@@ -4,6 +4,8 @@ require_once __DIR__ . '/../models/Prospeccao.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../services/SdrKanbanConfigService.php';
 require_once __DIR__ . '/../services/LeadDistributor.php';
+require_once __DIR__ . '/../services/DashboardKanbanService.php';
+require_once __DIR__ . '/QualificacaoController.php';
 
 class SdrDashboardController
 {
@@ -12,6 +14,8 @@ class SdrDashboardController
     private $userModel;
     private SdrKanbanConfigService $kanbanConfigService;
     private LeadDistributor $leadDistributor;
+    private DashboardKanbanService $dashboardKanbanService;
+    private QualificacaoController $qualificationController;
 
     public function __construct($pdo)
     {
@@ -20,6 +24,8 @@ class SdrDashboardController
         $this->userModel = new User($pdo);
         $this->kanbanConfigService = new SdrKanbanConfigService($pdo);
         $this->leadDistributor = new LeadDistributor($pdo);
+        $this->dashboardKanbanService = new DashboardKanbanService($pdo);
+        $this->qualificationController = new QualificacaoController($pdo);
     }
 
     public function index(): void
@@ -36,16 +42,27 @@ class SdrDashboardController
             exit();
         }
 
-        $kanbanStatuses = $this->kanbanConfigService->getColumns();
+        $kanbanFilters = $this->extractKanbanFilters($_GET ?? []);
+        $kanbanData = $this->dashboardKanbanService->buildSdrBoard($userId, $kanbanFilters);
+
+        $kanbanStatuses = $kanbanData['selected_statuses'];
         $stats = $this->buildDashboardStats($userId);
         $statusCounts = $this->prospectionModel->getProspeccoesCountByStatus($userId, 'sdrId');
         $excludedStatuses = ['Qualificado', 'Descartado', 'Convertido'];
         $urgentLeads = $this->prospectionModel->getUrgentProspectsForReturn(10, 3, $excludedStatuses, $userId, 'sdr');
         $upcomingMeetings = $this->prospectionModel->getProximosAgendamentos($userId, 5, 'sdr');
-        $kanbanLeads = $this->prospectionModel->getKanbanLeads($kanbanStatuses, $userId, false, 'sdrId');
+        $leadsByStatus = $kanbanData['leads_by_status'];
         $activeVendors = $this->userModel->getActiveVendors();
         $vendorDistribution = $this->prospectionModel->getLeadDistributionForSdr($userId);
         $vendorConversionRates = $this->prospectionModel->getSdrVendorConversionRates($userId);
+        $qualificationMetrics = $this->qualificationController->getQualificationMetrics($userId, null);
+        $nextVendorPreview = null;
+
+        try {
+            $nextVendorPreview = $this->leadDistributor->previewNextSalesperson();
+        } catch (Throwable $exception) {
+            error_log('Erro ao consultar próxima distribuição: ' . $exception->getMessage());
+        }
 
         $assignedLeadCount = 0;
         $unassignedLeadCount = 0;
@@ -72,21 +89,12 @@ class SdrDashboardController
             ];
         }
 
-        $leadsByStatus = [];
-        foreach ($kanbanStatuses as $status) {
-            $leadsByStatus[$status] = [];
-        }
-        foreach ($kanbanLeads as $lead) {
-            $status = $lead['status'] ?? '';
-            if (!isset($leadsByStatus[$status])) {
-                $leadsByStatus[$status] = [];
-            }
-            $leadsByStatus[$status][] = $lead;
-        }
-
         $pageTitle = 'Painel SDR';
         $totalLeads = array_sum($statusCounts);
         $kanbanEditUrl = APP_URL . '/sdr_dashboard.php?action=update_columns';
+        $selectedKanbanStatuses = $kanbanData['selected_statuses'];
+        $kanbanFilterOptions = $kanbanData['filters'];
+        $statusOptions = $kanbanData['available_statuses'];
 
         require_once __DIR__ . '/../views/layouts/header.php';
         require_once __DIR__ . '/../views/sdr_dashboard/main.php';
@@ -470,6 +478,32 @@ class SdrDashboardController
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $exception->getMessage()]);
         }
+    }
+
+    private function extractKanbanFilters(array $query): array
+    {
+        $filters = [];
+
+        if (isset($query['kanban_status'])) {
+            $filters['statuses'] = array_filter((array) $query['kanban_status'], static function ($status) {
+                return is_string($status) && trim($status) !== '';
+            });
+        }
+
+        $scope = isset($query['kanban_scope']) ? trim((string) $query['kanban_scope']) : '';
+        if ($scope === 'unassigned') {
+            $filters['only_unassigned'] = true;
+        }
+
+        if (!empty($query['kanban_vendor_id'])) {
+            $filters['vendor_id'] = (int) $query['kanban_vendor_id'];
+        }
+
+        if (!empty($query['kanban_payment_profile'])) {
+            $filters['payment_profile'] = trim((string) $query['kanban_payment_profile']);
+        }
+
+        return $filters;
     }
 
     private function buildDashboardStats(int $sdrId): array

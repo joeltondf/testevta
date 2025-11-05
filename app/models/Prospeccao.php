@@ -291,7 +291,9 @@ class Prospeccao
         ?int $responsavelId = null,
         bool $onlyUnassigned = false,
         string $ownerColumn = 'responsavel_id',
-        ?string $paymentProfile = null
+        ?string $paymentProfile = null,
+        ?int $sdrIdFilter = null,
+        ?int $vendorIdFilter = null
     ): array
     {
         if (empty($statuses)) {
@@ -332,6 +334,16 @@ class Prospeccao
             $params[] = $normalizedProfile;
         }
 
+        if ($sdrIdFilter !== null) {
+            $sql .= " AND p.sdrId = ?";
+            $params[] = $sdrIdFilter;
+        }
+
+        if ($vendorIdFilter !== null) {
+            $sql .= " AND p.responsavel_id = ?";
+            $params[] = $vendorIdFilter;
+        }
+
         $sql .= " ORDER BY p.data_ultima_atualizacao DESC, p.id DESC";
 
         $stmt = $this->pdo->prepare($sql);
@@ -362,6 +374,64 @@ class Prospeccao
         $stmt->execute($statuses);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getActiveKanbanStatuses(?int $ownerId = null, string $ownerColumn = 'responsavel_id'): array
+    {
+        $ownerColumn = $this->resolveOwnerColumn($ownerColumn);
+
+        $conditions = ["status NOT IN ('Descartado', 'Convertido', 'Inativo', 'Pausa')"];
+        $params = [];
+
+        if ($ownerId !== null) {
+            $conditions[] = "{$ownerColumn} = ?";
+            $params[] = $ownerId;
+        }
+
+        $sql = 'SELECT DISTINCT status FROM prospeccoes';
+
+        if (!empty($conditions)) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+
+        $sql .= ' ORDER BY status ASC';
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute($params);
+
+        return array_map(static fn ($row) => $row['status'], $statement->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAllowedPaymentProfiles(): array
+    {
+        $profiles = array_unique(array_values(self::ALLOWED_PAYMENT_PROFILES));
+        sort($profiles);
+
+        return $profiles;
+    }
+
+    /**
+     * @return array<int, array{id:int,nome_completo:string}>
+     */
+    public function getSdrDirectoryForVendor(int $vendorUserId): array
+    {
+        $sql = "SELECT DISTINCT u.id, u.nome_completo
+                FROM prospeccoes p
+                INNER JOIN users u ON p.sdrId = u.id
+                WHERE p.responsavel_id = :vendorUserId
+                ORDER BY u.nome_completo ASC";
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->bindValue(':vendorUserId', $vendorUserId, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getLeadDistributionForSdr(int $sdrId): array
