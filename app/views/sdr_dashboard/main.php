@@ -16,23 +16,6 @@ $vendorConversionRates = $vendorConversionRates ?? [];
 $assignedLeadCount = $assignedLeadCount ?? 0;
 $unassignedLeadCount = $unassignedLeadCount ?? 0;
 $kanbanEditUrl = $kanbanEditUrl ?? ($baseAppUrl . '/sdr_dashboard.php?action=update_columns');
-$selectedKanbanStatuses = $selectedKanbanStatuses ?? $kanbanStatuses;
-$kanbanFilterOptions = $kanbanFilterOptions ?? [
-    'status_options' => $kanbanStatuses,
-    'vendor_options' => $vendorDistribution,
-    'payment_profiles' => [],
-    'selected_vendor_id' => null,
-    'selected_payment_profile' => null,
-    'only_unassigned' => false,
-];
-$qualificationMetrics = $qualificationMetrics ?? ['qualified' => 0, 'converted' => 0, 'discarded' => 0];
-$nextVendorPreview = $nextVendorPreview ?? null;
-$kanbanFilterAction = $baseAppUrl . '/sdr_dashboard.php';
-$selectedVendorId = $kanbanFilterOptions['selected_vendor_id'] ?? null;
-$selectedPaymentProfile = $kanbanFilterOptions['selected_payment_profile'] ?? null;
-$onlyUnassigned = !empty($kanbanFilterOptions['only_unassigned']);
-$statusOptions = $kanbanFilterOptions['status_options'] ?? $kanbanStatuses;
-$paymentProfiles = $kanbanFilterOptions['payment_profiles'] ?? [];
 
 $hasUnassigned = false;
 foreach ($vendorDistribution as $distributionRow) {
@@ -79,66 +62,6 @@ if (!$hasUnassigned) {
 <?php endif; ?>
 
 <?php require __DIR__ . '/_stats_cards.php'; ?>
-
-<form method="get" action="<?php echo htmlspecialchars($kanbanFilterAction); ?>" class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-8">
-    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div class="flex-1">
-            <label class="block text-sm font-semibold text-gray-700 mb-3">Etapas do funil</label>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <?php foreach ($statusOptions as $statusOption): ?>
-                    <?php $checked = in_array($statusOption, $selectedKanbanStatuses, true); ?>
-                    <label class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-300">
-                        <input type="checkbox" name="kanban_status[]" value="<?php echo htmlspecialchars($statusOption); ?>" class="mr-2" <?php echo $checked ? 'checked' : ''; ?>>
-                        <?php echo htmlspecialchars($statusOption); ?>
-                    </label>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <div class="w-full md:w-64">
-            <label for="kanban_vendor_id" class="block text-sm font-semibold text-gray-700 mb-2">Filtrar por vendedor</label>
-            <select id="kanban_vendor_id" name="kanban_vendor_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Todos os vendedores</option>
-                <?php foreach ($kanbanFilterOptions['vendor_options'] as $option): ?>
-                    <?php $value = (int) ($option['vendorId'] ?? 0); ?>
-                    <option value="<?php echo $value; ?>" <?php echo ($selectedVendorId !== null && (int) $selectedVendorId === $value) ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($option['vendorName'] ?? 'Aguardando vendedor'); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="w-full md:w-60">
-            <label for="kanban_payment_profile" class="block text-sm font-semibold text-gray-700 mb-2">Perfil de pagamento</label>
-            <select id="kanban_payment_profile" name="kanban_payment_profile" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Todos</option>
-                <?php foreach ($paymentProfiles as $profile): ?>
-                    <option value="<?php echo htmlspecialchars($profile); ?>" <?php echo ($selectedPaymentProfile && strcasecmp($selectedPaymentProfile, $profile) === 0) ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($profile); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="w-full md:w-56">
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Escopo</label>
-            <label class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-300">
-                <input type="checkbox" name="kanban_scope" value="unassigned" class="mr-2" <?php echo $onlyUnassigned ? 'checked' : ''; ?>>
-                Mostrar apenas leads sem vendedor
-            </label>
-        </div>
-    </div>
-    <div class="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div class="text-sm text-gray-500">
-            <?php echo count($selectedKanbanStatuses); ?> coluna(s) selecionada(s).
-        </div>
-        <div class="flex items-center gap-3">
-            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors">
-                <i class="fas fa-filter mr-2"></i> Aplicar filtros
-            </button>
-            <a href="<?php echo htmlspecialchars($kanbanFilterAction); ?>" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                <i class="fas fa-undo mr-2"></i> Limpar
-            </a>
-        </div>
-    </div>
-</form>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
     <div class="xl:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">

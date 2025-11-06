@@ -50,43 +50,6 @@ class QualificacaoController
         require_once __DIR__ . '/../views/layouts/footer.php';
     }
 
-    public function getQualificationMetrics(?int $sdrId = null, ?int $vendorId = null): array
-    {
-        $conditions = [];
-        $params = [];
-
-        if ($sdrId !== null) {
-            $conditions[] = 'pq.sdrId = :sdrId';
-            $params[':sdrId'] = $sdrId;
-        }
-
-        if ($vendorId !== null) {
-            $conditions[] = 'p.responsavel_id = :vendorId';
-            $params[':vendorId'] = $vendorId;
-        }
-
-        $whereSql = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
-
-        $sql = "SELECT
-                    SUM(CASE WHEN pq.decision = 'qualificado' THEN 1 ELSE 0 END) AS qualified,
-                    SUM(CASE WHEN pq.decision = 'descartado' THEN 1 ELSE 0 END) AS discarded,
-                    SUM(CASE WHEN p.status = 'Convertido' THEN 1 ELSE 0 END) AS converted
-                FROM prospeccao_qualificacoes pq
-                INNER JOIN prospeccoes p ON p.id = pq.prospeccaoId
-                $whereSql";
-
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-
-        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
-
-        return [
-            'qualified' => (int)($row['qualified'] ?? 0),
-            'discarded' => (int)($row['discarded'] ?? 0),
-            'converted' => (int)($row['converted'] ?? 0)
-        ];
-    }
-
     public function store(int $prospeccaoId): void
     {
         $this->ensureSdrAccess();
