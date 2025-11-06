@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
+ 
 
 class OmieEtapaFaturamento
 {
-    private const BASE_COLUMNS = 'id, codigo, descricao, ativo, created_at, updated_at';
-
     private PDO $pdo;
 
     public function __construct(PDO $pdo)
@@ -16,14 +15,6 @@ class OmieEtapaFaturamento
 
     public function upsert(array $data): void
     {
-        $codigo = isset($data['codigo']) ? trim((string)$data['codigo']) : '';
-        $descricao = isset($data['descricao']) ? trim((string)$data['descricao']) : '';
-        $ativo = isset($data['ativo']) ? (int)$data['ativo'] : 1;
-
-        if ($codigo === '' || $descricao === '') {
-            throw new InvalidArgumentException('Código e descrição são obrigatórios para a etapa de faturamento.');
-        }
-
         $sql = <<<SQL
             INSERT INTO omie_etapas_faturamento (codigo, descricao, ativo)
             VALUES (:codigo, :descricao, :ativo)
@@ -34,36 +25,29 @@ class OmieEtapaFaturamento
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':codigo' => $codigo,
-            ':descricao' => $descricao,
-            ':ativo' => $ativo,
+            ':codigo' => $data['codigo'],
+            ':descricao' => $data['descricao'],
+            ':ativo' => $data['ativo'],
         ]);
     }
 
     public function getAll(): array
     {
-        $stmt = $this->pdo->query('SELECT ' . self::BASE_COLUMNS . ' FROM omie_etapas_faturamento ORDER BY descricao');
+        $stmt = $this->pdo->query('SELECT * FROM omie_etapas_faturamento ORDER BY descricao');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getActiveOrdered(): array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT ' . self::BASE_COLUMNS . ' FROM omie_etapas_faturamento WHERE ativo = 1 ORDER BY descricao'
-        );
-        $stmt->execute();
-
+        $stmt = $this->pdo->query('SELECT * FROM omie_etapas_faturamento WHERE ativo = 1 ORDER BY descricao');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT ' . self::BASE_COLUMNS . ' FROM omie_etapas_faturamento WHERE id = :id LIMIT 1'
-        );
+        $stmt = $this->pdo->prepare('SELECT * FROM omie_etapas_faturamento WHERE id = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
         return $result ?: null;
     }
 
@@ -73,7 +57,7 @@ class OmieEtapaFaturamento
         $stmt = $this->pdo->prepare($sql);
 
         return $stmt->execute([
-            ':descricao' => trim((string)($data['descricao'] ?? '')),
+            ':descricao' => $data['descricao'],
             ':ativo' => isset($data['ativo']) ? (int)$data['ativo'] : 0,
             ':id' => $id,
         ]);

@@ -17,39 +17,15 @@ class OmieSyncService
     {
         $this->pdo = $pdo;
         $this->configModel = $configModel;
-        $this->omieService = new OmieService($configModel, $pdo);
+        $this->omieService = new OmieService($configModel);
         $this->omieProdutoModel = new OmieProduto($pdo);
     }
 
     public function syncSupportTables(): array
     {
         return [
-            'etapas' => $this->syncEtapasFaturamento(),
-            'categorias' => $this->syncCategorias(),
-            'contas' => $this->syncContasCorrentes(),
-            'cenarios' => $this->syncCenariosFiscais(),
             'produtos' => $this->syncProdutos(),
         ];
-    }
-
-    public function syncEtapasFaturamento(): array
-    {
-        return $this->omieService->syncEtapasFaturamento();
-    }
-
-    public function syncCategorias(): array
-    {
-        return $this->omieService->syncCategorias();
-    }
-
-    public function syncContasCorrentes(): array
-    {
-        return $this->omieService->syncContasCorrentes();
-    }
-
-    public function syncCenariosFiscais(): array
-    {
-        return $this->omieService->syncCenariosFiscais();
     }
 
     public function persistLocalProductMetadata(int $localProductId, array $data): void

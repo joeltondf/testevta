@@ -9,10 +9,6 @@ require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Vendedor.php';
 require_once __DIR__ . '/../models/Tradutor.php';
 require_once __DIR__ . '/../models/OmieProduto.php';
-require_once __DIR__ . '/../models/OmieEtapaFaturamento.php';
-require_once __DIR__ . '/../models/OmieCategoria.php';
-require_once __DIR__ . '/../models/OmieContaCorrente.php';
-require_once __DIR__ . '/../models/OmieCenarioFiscal.php';
 require_once __DIR__ . '/../models/Processo.php';
 
 require_once __DIR__ . '/../utils/DashboardProcessFormatter.php';
@@ -33,10 +29,6 @@ class AdminController
     private $tradutorModel;
     private $omieSyncService;
     private $omieProdutoModel;
-    private OmieEtapaFaturamento $omieEtapaModel;
-    private OmieCategoria $omieCategoriaModel;
-    private OmieContaCorrente $omieContaCorrenteModel;
-    private OmieCenarioFiscal $omieCenarioFiscalModel;
     private KanbanConfigService $kanbanConfigService;
     private $processoModel;
     private ?array $availableProcessStatusesCache = null;
@@ -53,10 +45,6 @@ class AdminController
         $this->tradutorModel = new Tradutor($pdo);
         $this->omieSyncService = null;
         $this->omieProdutoModel = new OmieProduto($pdo);
-        $this->omieEtapaModel = new OmieEtapaFaturamento($pdo);
-        $this->omieCategoriaModel = new OmieCategoria($pdo);
-        $this->omieContaCorrenteModel = new OmieContaCorrente($pdo);
-        $this->omieCenarioFiscalModel = new OmieCenarioFiscal($pdo);
         $this->kanbanConfigService = new KanbanConfigService($pdo);
         $this->processoModel = new Processo($pdo);
     }
@@ -473,78 +461,6 @@ class AdminController
     private function getOmieSupportDefinitions(): array
     {
         return [
-            'etapas' => [
-                'title' => 'Etapas de Faturamento',
-                'model' => $this->omieEtapaModel,
-                'columns' => [
-                    ['key' => 'codigo', 'label' => 'Código'],
-                    ['key' => 'descricao', 'label' => 'Descrição'],
-                    ['key' => 'ativo', 'label' => 'Ativo'],
-                    ['key' => 'updated_at', 'label' => 'Atualizado em'],
-                ],
-                'fields' => [
-                    ['name' => 'codigo', 'label' => 'Código', 'type' => 'text', 'readonly' => true],
-                    ['name' => 'descricao', 'label' => 'Descrição', 'type' => 'text', 'required' => true],
-                    ['name' => 'ativo', 'label' => 'Ativo', 'type' => 'checkbox'],
-                ],
-                'syncMethod' => 'syncEtapasFaturamento',
-            ],
-            'categorias' => [
-                'title' => 'Categorias de Serviço',
-                'model' => $this->omieCategoriaModel,
-                'columns' => [
-                    ['key' => 'codigo', 'label' => 'Código'],
-                    ['key' => 'descricao', 'label' => 'Descrição'],
-                    ['key' => 'ativo', 'label' => 'Ativo'],
-                    ['key' => 'updated_at', 'label' => 'Atualizado em'],
-                ],
-                'fields' => [
-                    ['name' => 'codigo', 'label' => 'Código', 'type' => 'text', 'readonly' => true],
-                    ['name' => 'descricao', 'label' => 'Descrição', 'type' => 'text', 'required' => true],
-                    ['name' => 'ativo', 'label' => 'Ativo', 'type' => 'checkbox'],
-                ],
-                'syncMethod' => 'syncCategorias',
-            ],
-            'contas' => [
-                'title' => 'Contas Correntes',
-                'model' => $this->omieContaCorrenteModel,
-                'columns' => [
-                    ['key' => 'codigo', 'label' => 'Código'],
-                    ['key' => 'descricao', 'label' => 'Descrição'],
-                    ['key' => 'tipo', 'label' => 'Tipo'],
-                    ['key' => 'banco', 'label' => 'Banco'],
-                    ['key' => 'numero_agencia', 'label' => 'Agência'],
-                    ['key' => 'numero_conta_corrente', 'label' => 'Conta'],
-                    ['key' => 'ativo', 'label' => 'Ativo'],
-                    ['key' => 'updated_at', 'label' => 'Atualizado em'],
-                ],
-                'fields' => [
-                    ['name' => 'codigo', 'label' => 'Código', 'type' => 'text', 'readonly' => true],
-                    ['name' => 'descricao', 'label' => 'Descrição', 'type' => 'text', 'required' => true],
-                    ['name' => 'tipo', 'label' => 'Tipo', 'type' => 'text'],
-                    ['name' => 'banco', 'label' => 'Banco', 'type' => 'text'],
-                    ['name' => 'numero_agencia', 'label' => 'Agência', 'type' => 'text'],
-                    ['name' => 'numero_conta_corrente', 'label' => 'Conta Corrente', 'type' => 'text'],
-                    ['name' => 'ativo', 'label' => 'Ativo', 'type' => 'checkbox'],
-                ],
-                'syncMethod' => 'syncContasCorrentes',
-            ],
-            'cenarios' => [
-                'title' => 'Cenários Fiscais',
-                'model' => $this->omieCenarioFiscalModel,
-                'columns' => [
-                    ['key' => 'codigo', 'label' => 'Código'],
-                    ['key' => 'descricao', 'label' => 'Descrição'],
-                    ['key' => 'ativo', 'label' => 'Ativo'],
-                    ['key' => 'updated_at', 'label' => 'Atualizado em'],
-                ],
-                'fields' => [
-                    ['name' => 'codigo', 'label' => 'Código', 'type' => 'text', 'readonly' => true],
-                    ['name' => 'descricao', 'label' => 'Descrição', 'type' => 'text', 'required' => true],
-                    ['name' => 'ativo', 'label' => 'Ativo', 'type' => 'checkbox'],
-                ],
-                'syncMethod' => 'syncCenariosFiscais',
-            ],
             'produtos' => [
                 'title' => 'Produtos e Serviços',
                 'model' => $this->omieProdutoModel,
@@ -602,17 +518,12 @@ class AdminController
                 exit();
             }
 
-            $results = $this->getOmieSyncService()->syncSupportTables();
-            $definitions = $this->getOmieSupportDefinitions();
-            $summaries = [];
-
-            foreach ($results as $key => $payload) {
-                $title = $definitions[$key]['title'] ?? ucfirst($key);
-                $count = (int)($payload['total'] ?? 0);
-                $summaries[] = sprintf('%s: %d registro(s)', $title, $count);
-            }
-
-            $_SESSION['success_message'] = 'Sincronização concluída. ' . implode('; ', $summaries) . '.';
+            $result = $this->getOmieSyncService()->syncSupportTables();
+            $count = $result['produtos']['total'] ?? 0;
+            $_SESSION['success_message'] = sprintf(
+                'Sincronização de produtos concluída. %d registro(s) atualizado(s).',
+                $count
+            );
         } catch (Exception $exception) {
             $_SESSION['error_message'] = 'Falha ao sincronizar com a Omie: ' . $exception->getMessage();
         }
