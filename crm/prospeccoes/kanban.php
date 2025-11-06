@@ -17,33 +17,17 @@ $filterOnlyUnassigned = false;
 $selectedOwnerId = null;
 
 $paymentProfileLabels = [
-    'Mensalista' => 'Possível mensalista',
-    'À vista' => 'Possível à vista',
-];
-
-$profileAliasMap = [
-    'mensalista' => 'Mensalista',
-    'mensal' => 'Mensalista',
-    'à vista' => 'À vista',
-    'a vista' => 'À vista',
-    'avista' => 'À vista',
+    'mensalista' => 'Possível mensalista',
+    'avista' => 'Possível à vista',
 ];
 
 $rawPaymentProfile = $_GET['perfil_pagamento'] ?? '';
-$normalizedKey = is_string($rawPaymentProfile)
+$normalizedPaymentProfile = is_string($rawPaymentProfile)
     ? mb_strtolower(trim($rawPaymentProfile), 'UTF-8')
     : '';
 
-$selectedPaymentProfile = '';
-if ($normalizedKey !== '') {
-    $selectedPaymentProfile = $profileAliasMap[$normalizedKey] ?? '';
-}
-
-if ($selectedPaymentProfile === '' && is_string($rawPaymentProfile)) {
-    $trimmedRaw = trim($rawPaymentProfile);
-    if (array_key_exists($trimmedRaw, $paymentProfileLabels)) {
-        $selectedPaymentProfile = $trimmedRaw;
-    }
+if (!array_key_exists($normalizedPaymentProfile, $paymentProfileLabels)) {
+    $normalizedPaymentProfile = '';
 }
 
 if ($isVendor && $userId !== null) {
@@ -86,21 +70,21 @@ try {
             }
         }
     }
-    $hasUnassignedLeads = !$isVendor && $prospectionModel->hasUnassignedKanbanLeads($kanbanColumns, $selectedPaymentProfile ?: null);
+    $hasUnassignedLeads = !$isVendor && $prospectionModel->hasUnassignedKanbanLeads($kanbanColumns, $normalizedPaymentProfile ?: null);
 
     $kanbanLeads = $prospectionModel->getKanbanLeads(
         $kanbanColumns,
         $selectedOwnerId,
         $filterOnlyUnassigned,
         'responsavel_id',
-        $selectedPaymentProfile ?: null
+        $normalizedPaymentProfile ?: null
     );
     $assignableLeads = $prospectionModel->getLeadsOutsideKanban(
         $kanbanColumns,
         $selectedOwnerId,
         $filterOnlyUnassigned,
         'responsavel_id',
-        $selectedPaymentProfile ?: null
+        $normalizedPaymentProfile ?: null
     );
 } catch (Throwable $exception) {
     $errorMessage = 'Não foi possível carregar o Kanban. Tente novamente mais tarde.';
@@ -144,7 +128,7 @@ if ($isVendor) {
 
 $assignableLeadsCount = count($assignableLeads ?? []);
 $defaultKanbanDestination = $kanbanColumns[0] ?? '';
-
+$selectedPaymentProfile = $normalizedPaymentProfile;
 ?>
 
 <style>
