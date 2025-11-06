@@ -28,7 +28,7 @@ include __DIR__ . '/partials/conversion_steps.php';
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Converter em Serviço &mdash; Prazo do Serviço</h1>
-            <p class="text-sm text-gray-600">Defina a data de início e o prazo de legalização para a entrega.</p>
+            <p class="text-sm text-gray-600">Defina a data de início e o prazo acordado para a entrega.</p>
         </div>
         <a href="processos.php?action=view&id=<?php echo $processId; ?>" class="text-sm text-blue-600 hover:underline">&larr; Voltar para o processo</a>
     </div>

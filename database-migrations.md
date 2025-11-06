@@ -22,7 +22,7 @@ ALTER TABLE `clientes`
   ADD COLUMN `telefone_ddi` VARCHAR(4) NULL DEFAULT NULL AFTER `telefone`,
   ADD COLUMN `telefone_ddd` VARCHAR(4) NULL DEFAULT NULL AFTER `telefone_ddi`,
   ADD COLUMN `telefone_numero` VARCHAR(20) NULL DEFAULT NULL AFTER `telefone_ddd`,
-  ADD COLUMN `prazo_legalizacao_dias` INT UNSIGNED NULL DEFAULT NULL AFTER `tipo_assessoria`,
+  ADD COLUMN `prazo_acordado_dias` INT UNSIGNED NULL DEFAULT NULL AFTER `tipo_assessoria`,
   ADD COLUMN `complemento` VARCHAR(60) NULL DEFAULT NULL AFTER `numero`,
   ADD COLUMN `cidade_validation_source` ENUM('api', 'database') NULL DEFAULT 'api' AFTER `estado`,
   ADD COLUMN `data_conversao` DATETIME NULL DEFAULT NULL AFTER `cidade_validation_source`,
@@ -104,13 +104,13 @@ A tabela abaixo demonstra comandos básicos utilizando os novos campos.
 CREATE TABLE IF NOT EXISTS `clientes_test` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nome_cliente` VARCHAR(255) NOT NULL,
-  `prazo_legalizacao_dias` INT UNSIGNED NULL,
+  `prazo_acordado_dias` INT UNSIGNED NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 
 -- INSERT: novo cliente convertido
 INSERT INTO `clientes` (
-  `nome_cliente`, `tipo_pessoa`, `tipo_assessoria`, `prazo_legalizacao_dias`,
+  `nome_cliente`, `tipo_pessoa`, `tipo_assessoria`, `prazo_acordado_dias`,
   `cpf_cnpj`, `email`, `telefone`, `telefone_ddi`, `telefone_ddd`, `telefone_numero`, `cidade`, `estado`,
   `cidade_validation_source`, `is_prospect`, `data_conversao`
 ) VALUES (
