@@ -13,8 +13,6 @@ require_once __DIR__ . '/../utils/PhoneUtils.php';
 require_once __DIR__ . '/../utils/OmiePayloadBuilder.php';
 require_once __DIR__ . '/../utils/DocumentValidator.php';
 
-use DateTime;
-
 class ClientesController
 {
     private const SESSION_KEY_CLIENT_FORM = 'cliente_form_data';
@@ -383,81 +381,7 @@ class ClientesController
             }
         }
 
-        if (($data['tipo_assessoria'] ?? '') === 'Mensalista') {
-            $servicosMensalistas = isset($data['servicos_mensalistas']) && is_array($data['servicos_mensalistas'])
-                ? $data['servicos_mensalistas']
-                : [];
-            $errors = array_merge($errors, $this->validateMensalistaServicos($servicosMensalistas));
-        }
-
         return $errors;
-    }
-
-    private function validateMensalistaServicos(array $servicos): array
-    {
-        $errors = [];
-        $tiposPermitidos = ['Tradução', 'CRC', 'Apostilamento', 'Postagem', 'Outros'];
-
-        foreach ($servicos as $index => $servico) {
-            $linha = $index + 1;
-            $produtoId = isset($servico['produto_orcamento_id']) ? (int) $servico['produto_orcamento_id'] : 0;
-            $temInformacao = $produtoId > 0 || array_filter($servico, static function ($valor, $chave) use ($produtoId) {
-                if (in_array($chave, ['id', 'ativo'], true)) {
-                    return false;
-                }
-
-                if ($produtoId <= 0 && $chave === 'servico_tipo' && ($valor === '' || $valor === 'Outros')) {
-                    return false;
-                }
-
-                return $valor !== null && $valor !== '';
-            }, ARRAY_FILTER_USE_BOTH);
-
-            if (!$temInformacao) {
-                continue;
-            }
-
-            if ($produtoId <= 0) {
-                $errors[] = "Serviço mensalista #{$linha}: selecione um produto ou remova a linha em branco.";
-            }
-
-            $servicoTipo = $servico['servico_tipo'] ?? '';
-            if ($servicoTipo === '' || !in_array($servicoTipo, $tiposPermitidos, true)) {
-                $errors[] = "Serviço mensalista #{$linha}: selecione um tipo de serviço válido.";
-            }
-
-            $dataInicio = trim((string) ($servico['data_inicio'] ?? ''));
-            $dataFim = trim((string) ($servico['data_fim'] ?? ''));
-
-            if ($dataInicio !== '' && !$this->isValidDateString($dataInicio)) {
-                $errors[] = "Serviço mensalista #{$linha}: informe uma data de início válida (formato AAAA-MM-DD).";
-            }
-
-            if ($dataFim !== '' && !$this->isValidDateString($dataFim)) {
-                $errors[] = "Serviço mensalista #{$linha}: informe uma data de término válida (formato AAAA-MM-DD).";
-            }
-
-            if ($dataInicio !== '' && $dataFim !== '' && $this->isValidDateString($dataInicio) && $this->isValidDateString($dataFim)) {
-                $inicio = new DateTime($dataInicio);
-                $fim = new DateTime($dataFim);
-                if ($fim <= $inicio) {
-                    $errors[] = "Serviço mensalista #{$linha}: a data de término deve ser posterior à data de início.";
-                }
-            }
-        }
-
-        return $errors;
-    }
-
-    private function isValidDateString(?string $value): bool
-    {
-        if ($value === null || trim($value) === '') {
-            return false;
-        }
-
-        $date = DateTime::createFromFormat('Y-m-d', $value);
-
-        return $date instanceof DateTime && $date->format('Y-m-d') === $value;
     }
 
     private function isValidCityFromApi(string $cidade, string $estado, bool $allowFallback = false): bool

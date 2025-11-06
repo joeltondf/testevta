@@ -339,72 +339,41 @@ require_once __DIR__ . '/../layouts/header.php';
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Serviços Contratados (Mensalista)</h3>
         <div id="servicos-lista" class="space-y-4">
 
-            <?php $servicoTiposDisponiveis = ['Tradução', 'CRC', 'Apostilamento', 'Postagem', 'Outros']; ?>
             <?php if (!empty($servicos_mensalista)): ?>
                 <?php foreach ($servicos_mensalista as $index => $servico): ?>
-                    <?php
-                        $valorPadrao = isset($servico['valor_padrao']) ? number_format((float)$servico['valor_padrao'], 2, '.', '') : '';
-                        $servicoTipoSelecionado = $servico['servico_tipo'] ?? 'Outros';
-                        $ativo = isset($servico['ativo']) ? (int) $servico['ativo'] : 1;
-                        $dataInicio = !empty($servico['data_inicio']) ? $servico['data_inicio'] : '';
-                        $dataFim = !empty($servico['data_fim']) ? $servico['data_fim'] : '';
-                    ?>
                     <div class="grid grid-cols-12 gap-4 items-start servico-item">
-                        <input type="hidden" name="servicos_mensalistas[<?= $index ?>][id]" value="<?= htmlspecialchars($servico['id'] ?? '') ?>">
-                        <div class="col-span-12 md:col-span-5">
-                            <label class="block text-xs font-semibold text-gray-500">Produto/Serviço</label>
+                        <div class="col-span-12 md:col-span-6 lg:col-span-5">
                             <select name="servicos_mensalistas[<?= $index ?>][produto_orcamento_id]" class="mensalista-produto-select block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
                                 <option value="">Selecione um Produto/Serviço</option>
                                 <?php foreach ($produtos_orcamento as $produto): ?>
                                     <?php
                                         $valorPadraoProduto = isset($produto['valor_padrao']) ? number_format((float)$produto['valor_padrao'], 2, '.', '') : '';
                                         $bloquearMinimo = !empty($produto['bloquear_valor_minimo']);
-                                        $servicoTipoProduto = $produto['servico_tipo'] ?? 'Outros';
+                                        $servicoTipoProduto = $produto['servico_tipo'] ?? 'Nenhum';
                                     ?>
                                     <option
                                         value="<?= $produto['id'] ?>"
                                         data-servico-tipo="<?= htmlspecialchars($servicoTipoProduto) ?>"
                                         data-valor-padrao="<?= htmlspecialchars($valorPadraoProduto) ?>"
                                         data-bloquear-minimo="<?= $bloquearMinimo ? '1' : '0' ?>"
-                                        <?= ($produto['id'] == ($servico['produto_orcamento_id'] ?? null)) ? 'selected' : '' ?>
+                                        <?= ($produto['id'] == $servico['produto_orcamento_id']) ? 'selected' : '' ?>
                                     >
                                         <?= htmlspecialchars($produto['nome_categoria']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-span-6 md:col-span-2">
-                            <label class="block text-xs font-semibold text-gray-500">Valor Mensal</label>
-                            <input type="text" name="servicos_mensalistas[<?= $index ?>][valor_padrao]" data-currency-input class="servico-valor-input block w-full rounded-md border-gray-300 shadow-sm text-sm py-2" placeholder="R$ 0,00" value="<?= htmlspecialchars($valorPadrao) ?>">
+                        <div class="col-span-6 md:col-span-3 lg:col-span-3">
+                            <input type="text" name="servicos_mensalistas[<?= $index ?>][valor_padrao]" data-currency-input class="servico-valor-input block w-full rounded-md border-gray-300 shadow-sm text-sm py-2" placeholder="R$ 0,00" value="<?= number_format((float)($servico['valor_padrao'] ?? 0), 2, '.', '') ?>">
                             <p class="valor-min-info text-xs text-gray-500 mt-1 hidden">Valor mínimo: <span class="servico-min-text font-semibold"></span></p>
                         </div>
-                        <div class="col-span-6 md:col-span-3">
-                            <label class="block text-xs font-semibold text-gray-500">Tipo de Serviço</label>
-                            <select name="servicos_mensalistas[<?= $index ?>][servico_tipo]" class="servico-tipo-select block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
-                                <?php foreach ($servicoTiposDisponiveis as $tipoDisponivel): ?>
-                                    <option value="<?= $tipoDisponivel ?>" <?= ($servicoTipoSelecionado === $tipoDisponivel) ? 'selected' : '' ?>><?= $tipoDisponivel ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="col-span-6 md:col-span-2 lg:col-span-3 flex items-center md:justify-center">
+                            <span class="servico-tipo-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">—</span>
                         </div>
-                        <div class="col-span-6 md:col-span-1 flex items-center">
-                            <input type="hidden" name="servicos_mensalistas[<?= $index ?>][ativo]" value="0">
-                            <label class="inline-flex items-center space-x-2">
-                                <input type="checkbox" name="servicos_mensalistas[<?= $index ?>][ativo]" value="1" class="servico-ativo-toggle h-4 w-4 text-green-600 border-gray-300 rounded" <?= $ativo ? 'checked' : '' ?>>
-                                <span class="servico-ativo-label text-sm font-semibold text-gray-700"><?= $ativo ? 'Ativo' : 'Inativo' ?></span>
-                            </label>
-                        </div>
-                        <div class="col-span-6 md:col-span-1 flex justify-end md:items-center">
+                        <div class="col-span-12 md:col-span-1 flex justify-end md:items-center">
                             <button type="button" class="text-red-500 hover:text-red-700" onclick="removerServico(this)">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
-                        </div>
-                        <div class="col-span-6 md:col-span-3">
-                            <label class="block text-xs font-semibold text-gray-500">Início da Vigência</label>
-                            <input type="date" name="servicos_mensalistas[<?= $index ?>][data_inicio]" class="servico-data-inicio block w-full rounded-md border-gray-300 shadow-sm text-sm py-2" value="<?= htmlspecialchars($dataInicio) ?>">
-                        </div>
-                        <div class="col-span-6 md:col-span-3">
-                            <label class="block text-xs font-semibold text-gray-500">Fim da Vigência</label>
-                            <input type="date" name="servicos_mensalistas[<?= $index ?>][data_fim]" class="servico-data-fim block w-full rounded-md border-gray-300 shadow-sm text-sm py-2" value="<?= htmlspecialchars($dataFim) ?>">
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -583,14 +552,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const itemHtml = `
                 <div class="grid grid-cols-12 gap-4 items-start servico-item">
-                    <input type="hidden" name="servicos_mensalistas[${servicoIndex}][id]" value="">
-                    <div class="col-span-12 md:col-span-5">
-                        <label class="block text-xs font-semibold text-gray-500">Produto/Serviço</label>
+                    <div class="col-span-12 md:col-span-6 lg:col-span-5">
                         <select name="servicos_mensalistas[${servicoIndex}][produto_orcamento_id]" class="mensalista-produto-select block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
                             <option value="">Selecione um Produto/Serviço</option>
                             <?php foreach ($produtos_orcamento as $produto): ?>
                                 <option value="<?= $produto['id'] ?>"
-                                    data-servico-tipo="<?= htmlspecialchars($produto['servico_tipo'] ?? 'Outros') ?>"
+                                    data-servico-tipo="<?= htmlspecialchars($produto['servico_tipo'] ?? 'Nenhum') ?>"
                                     data-valor-padrao="<?= htmlspecialchars(isset($produto['valor_padrao']) ? number_format((float)$produto['valor_padrao'], 2, '.', '') : '') ?>"
                                     data-bloquear-minimo="<?= !empty($produto['bloquear_valor_minimo']) ? '1' : '0' ?>">
                                     <?= htmlspecialchars($produto['nome_categoria']) ?>
@@ -598,38 +565,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-span-6 md:col-span-2">
-                        <label class="block text-xs font-semibold text-gray-500">Valor Mensal</label>
+                    <div class="col-span-6 md:col-span-3 lg:col-span-3">
                         <input type="text" name="servicos_mensalistas[${servicoIndex}][valor_padrao]" data-currency-input class="servico-valor-input block w-full rounded-md border-gray-300 shadow-sm text-sm py-2" placeholder="R$ 0,00">
                         <p class="valor-min-info text-xs text-gray-500 mt-1 hidden">Valor mínimo: <span class="servico-min-text font-semibold"></span></p>
                     </div>
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-xs font-semibold text-gray-500">Tipo de Serviço</label>
-                        <select name="servicos_mensalistas[${servicoIndex}][servico_tipo]" class="servico-tipo-select block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
-                            <?php foreach ($servicoTiposDisponiveis as $tipoDisponivel): ?>
-                                <option value="<?= $tipoDisponivel ?>" <?= ($tipoDisponivel === 'Outros') ? 'selected' : '' ?>><?= $tipoDisponivel ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="col-span-6 md:col-span-2 lg:col-span-3 flex items-center md:justify-center">
+                        <span class="servico-tipo-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">Sem vínculo</span>
                     </div>
-                    <div class="col-span-6 md:col-span-1 flex items-center">
-                        <input type="hidden" name="servicos_mensalistas[${servicoIndex}][ativo]" value="0">
-                        <label class="inline-flex items-center space-x-2">
-                            <input type="checkbox" name="servicos_mensalistas[${servicoIndex}][ativo]" value="1" class="servico-ativo-toggle h-4 w-4 text-green-600 border-gray-300 rounded" checked>
-                            <span class="servico-ativo-label text-sm font-semibold text-gray-700">Ativo</span>
-                        </label>
-                    </div>
-                    <div class="col-span-6 md:col-span-1 flex justify-end md:items-center">
+                    <div class="col-span-12 md:col-span-1 flex justify-end md:items-center">
                         <button type="button" class="text-red-500 hover:text-red-700" onclick="removerServico(this)">
                             <i class="fas fa-trash-alt"></i>
                         </button>
-                    </div>
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-xs font-semibold text-gray-500">Início da Vigência</label>
-                        <input type="date" name="servicos_mensalistas[${servicoIndex}][data_inicio]" class="servico-data-inicio block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
-                    </div>
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-xs font-semibold text-gray-500">Fim da Vigência</label>
-                        <input type="date" name="servicos_mensalistas[${servicoIndex}][data_fim]" class="servico-data-fim block w-full rounded-md border-gray-300 shadow-sm text-sm py-2">
                     </div>
                 </div>`;
             servicosLista.insertAdjacentHTML('beforeend', itemHtml);
@@ -644,6 +590,15 @@ document.addEventListener('DOMContentLoaded', function() {
         window.removerServico = function(button) {
             button.closest('.servico-item').remove();
         }
+
+        const servicoTipoStyleMap = {
+            'Tradução': 'bg-blue-100 text-blue-700',
+            'CRC': 'bg-green-100 text-green-700',
+            'Apostilamento': 'bg-yellow-100 text-yellow-700',
+            'Postagem': 'bg-purple-100 text-purple-700',
+            'Outros': 'bg-gray-100 text-gray-700',
+            'Nenhum': 'bg-gray-200 text-gray-700'
+        };
 
         function formatCurrencyBRL(value) {
             if (value === null || value === undefined || value === '') {
@@ -663,14 +618,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const select = row.querySelector('.mensalista-produto-select');
             const valorInput = row.querySelector('.servico-valor-input');
-            const tipoSelect = row.querySelector('.servico-tipo-select');
-            const ativoToggle = row.querySelector('.servico-ativo-toggle');
-            const ativoLabel = row.querySelector('.servico-ativo-label');
+            const badge = row.querySelector('.servico-tipo-badge');
             const minInfo = row.querySelector('.valor-min-info');
             const minText = row.querySelector('.servico-min-text');
 
             const selectedOption = select ? select.options[select.selectedIndex] : null;
-            const tipoServicoProduto = selectedOption ? (selectedOption.dataset.servicoTipo || '') : '';
+            const tipoServico = selectedOption ? (selectedOption.dataset.servicoTipo || 'Nenhum') : 'Nenhum';
             const valorPadrao = selectedOption && selectedOption.dataset.valorPadrao !== undefined
                 ? Number.parseFloat(selectedOption.dataset.valorPadrao)
                 : null;
@@ -689,18 +642,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 setCurrencyValue(valorInput, valorParaAplicar);
             }
 
-            if (tipoSelect && tipoServicoProduto) {
-                const tipoNormalizado = tipoServicoProduto || 'Outros';
-                const temOpcao = Array.from(tipoSelect.options).some(option => option.value === tipoNormalizado);
-                if (temOpcao && (!tipoSelect.value || tipoSelect.value === 'Outros')) {
-                    tipoSelect.value = tipoNormalizado;
-                }
-            }
-
-            if (ativoLabel && ativoToggle) {
-                ativoLabel.textContent = ativoToggle.checked ? 'Ativo' : 'Inativo';
-                ativoLabel.classList.remove('text-gray-700', 'text-green-700', 'text-gray-500');
-                ativoLabel.classList.add(ativoToggle.checked ? 'text-green-700' : 'text-gray-500');
+            if (badge) {
+                const badgeBase = 'servico-tipo-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ';
+                const classeCor = servicoTipoStyleMap[tipoServico] || servicoTipoStyleMap.Nenhum;
+                badge.className = badgeBase + classeCor;
+                badge.textContent = (tipoServico && tipoServico !== 'Nenhum') ? tipoServico : 'Sem vínculo';
             }
 
             if (minInfo && minText) {
@@ -724,13 +670,6 @@ document.addEventListener('DOMContentLoaded', function() {
             servicosLista.addEventListener('change', event => {
                 if (event.target && event.target.classList.contains('mensalista-produto-select')) {
                     updateServicoMensalistaRow(event.target.closest('.servico-item'));
-                    return;
-                }
-
-                if (event.target && event.target.classList.contains('servico-ativo-toggle')) {
-                    const row = event.target.closest('.servico-item');
-                    const valorAtual = row?.querySelector('.servico-valor-input')?.value;
-                    updateServicoMensalistaRow(row, { preserveValor: true, valorAtual });
                 }
             });
 
