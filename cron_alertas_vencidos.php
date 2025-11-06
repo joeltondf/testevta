@@ -69,7 +69,7 @@ $corpo = "
             <h1>Alerta de Prazos Vencidos</h1>
         </div>
         <div class='content'>
-            <p>Olá! O sistema identificou os seguintes serviços cujo prazo de entrega está vencido e que ainda não foram marcados como 'Finalizado'.</p>
+            <p>Olá! O sistema identificou os seguintes serviços cujo prazo de entrega está vencido e que ainda não foram marcados como 'Concluído'.</p>
             <table class='process-table'>
                 <thead>
                     <tr>

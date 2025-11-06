@@ -82,7 +82,7 @@ class GerenteDashboardController
                     COUNT(p.id) AS total_aprovados
                 FROM vendedores v
                 JOIN users u ON v.user_id = u.id
-                LEFT JOIN processos p USE INDEX (idx_processos_status)
+                LEFT JOIN processos p
                     ON v.id = p.vendedor_id
                     AND p.status_processo = 'Serviço Pendente'
                 GROUP BY v.id, u.nome_completo
@@ -99,9 +99,9 @@ class GerenteDashboardController
                     COUNT(p.id) AS total_finalizados
                 FROM vendedores v
                 JOIN users u ON v.user_id = u.id
-                LEFT JOIN processos p USE INDEX (idx_processos_status)
+                LEFT JOIN processos p
                     ON v.id = p.vendedor_id
-                    AND p.status_processo IN ('Finalizado', 'Concluído') -- 'Concluído' mantido por compatibilidade legada
+                    AND p.status_processo IN ('Concluído', 'Finalizado')
                 GROUP BY v.id, u.nome_completo
             ");
             $stmt->execute();
@@ -115,7 +115,7 @@ class GerenteDashboardController
                     COALESCE(SUM(p.valor_total), 0) AS valor_previsto
                 FROM vendedores v
                 JOIN users u ON v.user_id = u.id
-                LEFT JOIN processos p USE INDEX (idx_processos_status)
+                LEFT JOIN processos p
                     ON v.id = p.vendedor_id
                     AND p.status_processo IN ('Serviço Pendente', 'Serviço pendente', 'Serviço em Andamento', 'Serviço em andamento', 'Aguardando pagamento')
                 GROUP BY v.id, u.nome_completo

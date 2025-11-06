@@ -32,16 +32,14 @@ class DashboardProcessFormatter
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
             'aguardando pagamento' => 'aguardando pagamento',
-            'finalizado' => 'finalizado',
-            'finalizada' => 'finalizado',
-            'concluido' => 'finalizado',
-            'concluida' => 'finalizado',
-            'concluído' => 'finalizado',
-            'concluída' => 'finalizado',
+            'finalizado' => 'concluído',
+            'finalizada' => 'concluído',
+            'concluido' => 'concluído',
+            'concluida' => 'concluído',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'recusado',
-            'recusada' => 'recusado',
+            'recusado' => 'cancelado',
+            'recusada' => 'cancelado',
         ];
 
         if (isset($aliases[$normalized])) {
@@ -54,9 +52,8 @@ class DashboardProcessFormatter
             'serviço pendente' => 'Serviço Pendente',
             'serviço em andamento' => 'Serviço em Andamento',
             'aguardando pagamento' => 'Aguardando pagamento',
-            'finalizado' => 'Finalizado',
+            'concluído' => 'Concluído',
             'cancelado' => 'Cancelado',
-            'recusado' => 'Recusado',
         ];
 
         $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
@@ -71,9 +68,8 @@ class DashboardProcessFormatter
             'serviço pendente' => 'bg-orange-50 hover:bg-orange-100',
             'serviço em andamento' => 'bg-cyan-50 hover:bg-cyan-100',
             'aguardando pagamento' => 'bg-indigo-50 hover:bg-indigo-100',
-            'finalizado' => 'bg-purple-50 hover:bg-purple-100',
+            'concluído' => 'bg-purple-50 hover:bg-purple-100',
             'cancelado' => 'bg-red-50 hover:bg-red-100',
-            'recusado' => 'bg-red-100 hover:bg-red-200',
             default => 'hover:bg-gray-50',
         };
     }
@@ -92,14 +88,14 @@ class DashboardProcessFormatter
             'deadlineDate' => null,
         ];
 
-        if ($statusNormalized === 'finalizado') {
-            $descriptor['label'] = 'Finalizado';
+        if ($statusNormalized === 'concluído') {
+            $descriptor['label'] = 'Concluído';
             $descriptor['class'] = $colors['completed'];
             $descriptor['state'] = 'completed';
             return $descriptor;
         }
 
-        if (in_array($statusNormalized, ['cancelado', 'recusado', 'orçamento', 'orçamento pendente', 'aguardando pagamento'], true)) {
+        if (in_array($statusNormalized, ['cancelado', 'orçamento', 'orçamento pendente', 'aguardando pagamento'], true)) {
             $descriptor['label'] = 'N/A';
             $descriptor['class'] = $colors['inactive'];
             $descriptor['state'] = 'inactive';

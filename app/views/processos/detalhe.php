@@ -46,12 +46,10 @@ function normalize_status_info(?string $status): array {
         'servico em andamento' => 'serviço em andamento',
         'em andamento' => 'serviço em andamento',
         'aguardando pagamento' => 'aguardando pagamento',
-        'finalizado' => 'finalizado',
-        'finalizada' => 'finalizado',
-        'concluido' => 'finalizado',
-        'concluida' => 'finalizado',
-        'concluído' => 'finalizado',
-        'concluída' => 'finalizado',
+        'finalizado' => 'concluído',
+        'finalizada' => 'concluído',
+        'concluido' => 'concluído',
+        'concluida' => 'concluído',
         'arquivado' => 'cancelado',
         'arquivada' => 'cancelado',
     ];
@@ -66,9 +64,8 @@ function normalize_status_info(?string $status): array {
         'serviço pendente' => 'Serviço Pendente',
         'serviço em andamento' => 'Serviço em Andamento',
         'aguardando pagamento' => 'Aguardando pagamento',
-        'finalizado' => 'Finalizado',
+        'concluído' => 'Concluído',
         'cancelado' => 'Cancelado',
-        'recusado' => 'Recusado',
     ];
 
     $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
@@ -95,19 +92,16 @@ switch ($statusNormalized) {
     case 'aguardando pagamento':
         $status_classes = 'bg-indigo-100 text-indigo-800';
         break;
-    case 'finalizado':
+    case 'concluído':
         $status_classes = 'bg-green-100 text-green-800';
         break;
     case 'cancelado':
         $status_classes = 'bg-red-100 text-red-800';
         break;
-    case 'recusado':
-        $status_classes = 'bg-red-200 text-red-900';
-        break;
 }
 $statusLabel = $statusLabel ?: 'N/A';
 $leadConversionContext = $leadConversionContext ?? ['shouldRender' => false];
-$isAprovadoOuSuperior = in_array($statusNormalized, ['serviço pendente', 'serviço em andamento', 'aguardando pagamento', 'finalizado'], true);
+$isAprovadoOuSuperior = in_array($statusNormalized, ['serviço pendente', 'serviço em andamento', 'aguardando pagamento', 'concluído'], true);
 $isManager = in_array($_SESSION['user_perfil'] ?? '', ['admin', 'gerencia', 'supervisor'], true);
 $isBudgetPending = $statusNormalized === 'orçamento pendente';
 $shouldHideStatusPanel = $isManager && $isBudgetPending;
@@ -506,7 +500,7 @@ $isServicePending = $statusNormalized === 'serviço pendente';
                     <div>
                         <label for="status_processo" class="block text-sm font-medium text-gray-700">Mudar Status para:</label>
                         <select id="status_processo" name="status_processo" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            <?php $statusOptions = ['Orçamento Pendente', 'Orçamento', 'Serviço Pendente', 'Serviço em Andamento', 'Aguardando pagamento', 'Finalizado', 'Cancelado', 'Recusado']; ?>
+                            <?php $statusOptions = ['Orçamento Pendente', 'Orçamento', 'Serviço Pendente', 'Serviço em Andamento', 'Aguardando pagamento', 'Concluído', 'Cancelado']; ?>
                             <?php foreach ($statusOptions as $stat): ?>
                                 <?php $optionInfo = normalize_status_info($stat); ?>
                                 <option value="<?php echo $optionInfo['label']; ?>" <?php echo ($statusNormalized === $optionInfo['normalized']) ? 'selected' : ''; ?>>

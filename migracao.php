@@ -18,7 +18,7 @@ define('WP_DB_PASS', '@Amora051307');
 
 $statusMap = [
     'status-aberto'   => 'Serviço em Andamento',
-    'status-fechado'  => 'Finalizado',
+    'status-fechado'  => 'Concluído',
     'arquivado'       => 'Cancelado',
 ];
 $categoryMap = [

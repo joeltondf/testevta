@@ -68,7 +68,7 @@ class VendedorDashboardController
                 $stats['processos_ativos']++;
             }
 
-            if ($statusNormalized === 'finalizado') {
+            if ($statusNormalized === 'concluído') {
                 $valorTotalFinalizado += (float)$processo['valor_total'];
                 if (!empty($processo['data_finalizacao_real'])) {
                     $dataFinalizacao = new DateTime($processo['data_finalizacao_real']);
@@ -77,9 +77,9 @@ class VendedorDashboardController
                     }
                 }
             }
-
+            
             $prazo = $processo['traducao_prazo_data'] ?? '';
-            if (!empty($prazo) && strtotime($prazo) < time() && !in_array($statusNormalized, ['finalizado', 'cancelado', 'recusado'], true)) {
+            if (!empty($prazo) && strtotime($prazo) < time() && !in_array($statusNormalized, ['concluído', 'cancelado'], true)) {
                 $stats['processos_atrasados']++;
             }
         }
@@ -167,16 +167,14 @@ class VendedorDashboardController
             'servico em andamento' => 'serviço em andamento',
             'em andamento' => 'serviço em andamento',
             'aguardando pagamento' => 'aguardando pagamento',
-            'finalizado' => 'finalizado',
-            'finalizada' => 'finalizado',
-            'concluido' => 'finalizado',
-            'concluida' => 'finalizado',
-            'concluído' => 'finalizado',
-            'concluída' => 'finalizado',
+            'finalizado' => 'concluído',
+            'finalizada' => 'concluído',
+            'concluido' => 'concluído',
+            'concluida' => 'concluído',
             'arquivado' => 'cancelado',
             'arquivada' => 'cancelado',
-            'recusado' => 'recusado',
-            'recusada' => 'recusado',
+            'recusado' => 'cancelado',
+            'recusada' => 'cancelado',
         ];
 
         if (isset($aliases[$normalized])) {
@@ -189,9 +187,8 @@ class VendedorDashboardController
             'serviço pendente' => 'Serviço Pendente',
             'serviço em andamento' => 'Serviço em Andamento',
             'aguardando pagamento' => 'Aguardando pagamento',
-            'finalizado' => 'Finalizado',
+            'concluído' => 'Concluído',
             'cancelado' => 'Cancelado',
-            'recusado' => 'Recusado',
         ];
 
         $label = $labels[$normalized] ?? ($status === '' ? 'N/A' : $status);
