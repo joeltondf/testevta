@@ -2,21 +2,20 @@
 $formData = $formData ?? [];
 $processId = (int)($processo['id'] ?? 0);
 $mapLegacyPaymentMethod = static function (?string $method): string {
-    $normalized = mb_strtolower(trim((string)$method));
+    $normalized = trim((string)$method);
     switch ($normalized) {
-        case 'mensal':
-        case 'pagamento mensal':
-            return 'Mensal';
-        case 'outro':
+        case 'À vista':
+        case 'Pagamento único':
+            return 'Pagamento único';
+        case 'Parcelado':
         case 'parcelado':
-        case 'pagamento parcelado':
-            return 'Outro';
-        case 'à vista':
-        case 'a vista':
-        case 'pagamento único':
-        case 'pagamento unico':
+        case 'Pagamento parcelado':
+            return 'Pagamento parcelado';
+        case 'Mensal':
+        case 'Pagamento mensal':
+            return 'Pagamento mensal';
         default:
-            return 'À vista';
+            return 'Pagamento único';
     }
 };
 
@@ -109,10 +108,10 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                     <div>
                         <label class="block text-sm font-semibold text-gray-700" for="forma_cobranca">Forma de cobrança</label>
                         <select id="forma_cobranca" name="forma_cobranca" class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500" data-payment-method>
-                        <option value="À vista" <?php echo $paymentMethod === 'À vista' ? 'selected' : ''; ?>>À vista</option>
-                        <option value="Outro" <?php echo $paymentMethod === 'Outro' ? 'selected' : ''; ?>>Outro</option>
-                        <option value="Mensal" <?php echo $paymentMethod === 'Mensal' ? 'selected' : ''; ?>>Mensal</option>
-                    </select>
+                            <option value="Pagamento único" <?php echo $paymentMethod === 'Pagamento único' ? 'selected' : ''; ?>>Pagamento único</option>
+                            <option value="Pagamento parcelado" <?php echo $paymentMethod === 'Pagamento parcelado' ? 'selected' : ''; ?>>Pagamento parcelado</option>
+                            <option value="Pagamento mensal" <?php echo $paymentMethod === 'Pagamento mensal' ? 'selected' : ''; ?>>Pagamento mensal</option>
+                        </select>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-semibold text-gray-700" for="valor_total">Valor total do serviço</label>
@@ -128,8 +127,8 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                     </div>
                 </div>
 
-                <div class="space-y-6 <?php echo $paymentMethod === 'À vista' ? '' : 'hidden'; ?>" data-payment-section="À vista">
-                    <h3 class="text-md font-semibold text-gray-800">Pagamento à vista</h3>
+                <div class="space-y-6 <?php echo $paymentMethod === 'Pagamento único' ? '' : 'hidden'; ?>" data-payment-section="Pagamento único">
+                    <h3 class="text-md font-semibold text-gray-800">Pagamento único</h3>
                     <p class="text-sm text-gray-600">O valor recebido será igual ao total calculado para o serviço.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
@@ -140,7 +139,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 value="<?php echo htmlspecialchars($paymentDateOne); ?>"
                                 class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
                                 data-field-name="data_pagamento_1"
-                                <?php echo $paymentMethod === 'À vista' ? 'name="data_pagamento_1"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento único' ? 'name="data_pagamento_1"' : 'disabled'; ?>
                             >
                         </div>
                         <div>
@@ -158,14 +157,14 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 class="hidden"
                                 data-field-name="comprovante_pagamento_unico"
                                 data-upload-display="payment_unique_receipt"
-                                <?php echo $paymentMethod === 'À vista' ? 'name="comprovante_pagamento_unico"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento único' ? 'name="comprovante_pagamento_unico"' : 'disabled'; ?>
                             >
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-6 <?php echo $paymentMethod === 'Outro' ? '' : 'hidden'; ?>" data-payment-section="Outro">
-                    <h3 class="text-md font-semibold text-gray-800">Outra forma de pagamento</h3>
+                <div class="space-y-6 <?php echo $paymentMethod === 'Pagamento parcelado' ? '' : 'hidden'; ?>" data-payment-section="Pagamento parcelado">
+                    <h3 class="text-md font-semibold text-gray-800">Pagamento parcelado</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700" for="valor_entrada">Valor da 1ª parcela</label>
@@ -176,7 +175,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
                                 data-entry-value
                                 data-field-name="valor_entrada"
-                                <?php echo $paymentMethod === 'Outro' ? 'name="valor_entrada"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento parcelado' ? 'name="valor_entrada"' : 'disabled'; ?>
                                 placeholder="R$ 0,00"
                             >
                         </div>
@@ -188,7 +187,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 value="<?php echo htmlspecialchars($paymentDateOne); ?>"
                                 class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
                                 data-field-name="data_pagamento_1"
-                                <?php echo $paymentMethod === 'Outro' ? 'name="data_pagamento_1"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento parcelado' ? 'name="data_pagamento_1"' : 'disabled'; ?>
                             >
                         </div>
                         <div>
@@ -206,7 +205,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 class="hidden"
                                 data-field-name="comprovante_pagamento_entrada"
                                 data-upload-display="payment_installment_receipt_1"
-                                <?php echo $paymentMethod === 'Outro' ? 'name="comprovante_pagamento_entrada"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento parcelado' ? 'name="comprovante_pagamento_entrada"' : 'disabled'; ?>
                             >
                         </div>
                     </div>
@@ -231,7 +230,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 value="<?php echo htmlspecialchars($paymentDateTwo); ?>"
                                 class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
                                 data-field-name="data_pagamento_2"
-                                <?php echo $paymentMethod === 'Outro' ? 'name="data_pagamento_2"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento parcelado' ? 'name="data_pagamento_2"' : 'disabled'; ?>
                             >
                         </div>
                         <div>
@@ -249,13 +248,13 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 class="hidden"
                                 data-field-name="comprovante_pagamento_saldo"
                                 data-upload-display="payment_installment_receipt_2"
-                                <?php echo $paymentMethod === 'Outro' ? 'name="comprovante_pagamento_saldo"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento parcelado' ? 'name="comprovante_pagamento_saldo"' : 'disabled'; ?>
                             >
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-6 <?php echo $paymentMethod === 'Mensal' ? '' : 'hidden'; ?>" data-payment-section="Mensal">
+                <div class="space-y-6 <?php echo $paymentMethod === 'Pagamento mensal' ? '' : 'hidden'; ?>" data-payment-section="Pagamento mensal">
                     <h3 class="text-md font-semibold text-gray-800">Pagamento mensal</h3>
                     <p class="text-sm text-gray-600">Informe apenas a data prevista para o pagamento mensal.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -267,7 +266,7 @@ $parceladoRestDisplay = $balanceNumeric !== null ? $formatCurrencyDisplay($balan
                                 value="<?php echo htmlspecialchars($paymentDateOne); ?>"
                                 class="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
                                 data-field-name="data_pagamento_1"
-                                <?php echo $paymentMethod === 'Mensal' ? 'name="data_pagamento_1"' : 'disabled'; ?>
+                                <?php echo $paymentMethod === 'Pagamento mensal' ? 'name="data_pagamento_1"' : 'disabled'; ?>
                             >
                         </div>
                     </div>

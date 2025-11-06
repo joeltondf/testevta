@@ -81,21 +81,21 @@ $crcAttachments = isset($crcAttachments) && is_array($crcAttachments) ? $crcAtta
 $paymentProofAttachments = isset($paymentProofAttachments) && is_array($paymentProofAttachments) ? $paymentProofAttachments : [];
 $reuseTranslationForCrc = !empty($processo['reuseTraducaoForCrc'] ?? $formData['reuseTraducaoForCrc'] ?? null);
 $mapPaymentMethod = static function (?string $method): string {
-    $normalized = mb_strtolower(trim((string)$method));
-    switch ($normalized) {
-        case 'mensal':
-        case 'pagamento mensal':
-            return 'Mensal';
-        case 'outro':
-        case 'parcelado':
+    $normalized = trim((string)$method);
+    switch (mb_strtolower($normalized)) {
         case 'pagamento parcelado':
-            return 'Outro';
-        case 'à vista':
-        case 'a vista':
+        case 'parcelado':
+            return 'Pagamento parcelado';
+        case 'pagamento mensal':
+        case 'mensal':
+            return 'Pagamento mensal';
         case 'pagamento único':
         case 'pagamento unico':
+        case 'à vista':
+        case 'a vista':
+            return 'Pagamento único';
         default:
-            return 'À vista';
+            return 'Pagamento único';
     }
 };
 $paymentMethod = $mapPaymentMethod($processo['orcamento_forma_pagamento'] ?? $formData['orcamento_forma_pagamento'] ?? null);
@@ -486,9 +486,9 @@ $codigoPedidoIntegracao = $processo['codigo_pedido_integracao'] ?? $formData['co
                     <div>
                         <label for="billing_type" class="block text-sm font-medium text-gray-700">Forma de Cobrança</label>
                         <select name="orcamento_forma_pagamento" id="billing_type" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="À vista" <?php echo $paymentMethod === 'À vista' ? 'selected' : ''; ?>>À vista</option>
-                            <option value="Outro" <?php echo $paymentMethod === 'Outro' ? 'selected' : ''; ?>>Outro</option>
-                            <option value="Mensal" <?php echo $paymentMethod === 'Mensal' ? 'selected' : ''; ?>>Mensal</option>
+                            <option value="Pagamento único" <?php echo $paymentMethod === 'Pagamento único' ? 'selected' : ''; ?>>Pagamento único</option>
+                            <option value="Pagamento parcelado" <?php echo $paymentMethod === 'Pagamento parcelado' ? 'selected' : ''; ?>>Pagamento parcelado</option>
+                            <option value="Pagamento mensal" <?php echo $paymentMethod === 'Pagamento mensal' ? 'selected' : ''; ?>>Pagamento mensal</option>
                         </select>
                     </div>
                     <div class="md:col-span-2">
@@ -497,8 +497,8 @@ $codigoPedidoIntegracao = $processo['codigo_pedido_integracao'] ?? $formData['co
                     </div>
                 </div>
 
-                <div class="space-y-4 <?php echo $paymentMethod === 'À vista' ? '' : 'hidden'; ?>" data-billing-section="À vista">
-                    <h3 class="text-md font-semibold text-gray-800">Pagamento à vista</h3>
+                <div class="space-y-4 <?php echo $paymentMethod === 'Pagamento único' ? '' : 'hidden'; ?>" data-billing-section="Pagamento único">
+                    <h3 class="text-md font-semibold text-gray-800">Pagamento único</h3>
                     <p class="text-sm text-gray-600">O valor recebido será igual ao total calculado do orçamento.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -519,10 +519,10 @@ $codigoPedidoIntegracao = $processo['codigo_pedido_integracao'] ?? $formData['co
                     </div>
                 </div>
 
-                <div class="space-y-4 <?php echo $paymentMethod === 'Outro' ? '' : 'hidden'; ?>" data-billing-section="Outro">
-                    <h3 class="text-md font-semibold text-gray-800">Outra forma de pagamento</h3>
+                <div class="space-y-4 <?php echo $paymentMethod === 'Pagamento parcelado' ? '' : 'hidden'; ?>" data-billing-section="Pagamento parcelado">
+                    <h3 class="text-md font-semibold text-gray-800">Pagamento parcelado</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div id="entrada-wrapper" class="<?php echo $paymentMethod === 'Outro' ? '' : 'hidden'; ?>">
+                        <div id="entrada-wrapper" class="<?php echo $paymentMethod === 'Pagamento parcelado' ? '' : 'hidden'; ?>">
                             <label class="block text-sm font-medium text-gray-700" for="billing_parcelado_entrada">Valor da 1ª parcela</label>
                             <input type="text" id="billing_parcelado_entrada" value="<?php echo htmlspecialchars($paymentEntryValue); ?>" data-field-name="orcamento_valor_entrada" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm valor-servico" placeholder="R$ 0,00">
                         </div>
@@ -565,7 +565,7 @@ $codigoPedidoIntegracao = $processo['codigo_pedido_integracao'] ?? $formData['co
                     </div>
                 </div>
 
-                <div class="space-y-4 <?php echo $paymentMethod === 'Mensal' ? '' : 'hidden'; ?>" data-billing-section="Mensal">
+                <div class="space-y-4 <?php echo $paymentMethod === 'Pagamento mensal' ? '' : 'hidden'; ?>" data-billing-section="Pagamento mensal">
                     <h3 class="text-md font-semibold text-gray-800">Pagamento mensal</h3>
                     <p class="text-sm text-gray-600">A primeira cobrança será igual ao valor total calculado para o período.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -917,7 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (entradaWrapper) {
-            const showEntry = selectedType === 'Outro';
+            const showEntry = selectedType === 'Pagamento parcelado';
             entradaWrapper.classList.toggle('hidden', !showEntry);
             if (!showEntry && parceladoEntryInput) {
                 parceladoEntryInput.value = '';

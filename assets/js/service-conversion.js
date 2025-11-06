@@ -114,7 +114,7 @@
         };
 
         const updateSummary = () => {
-            const method = methodSelect ? methodSelect.value : 'À vista';
+            const method = methodSelect ? methodSelect.value : 'Pagamento único';
             const total = totalInput ? parseCurrency(totalInput.value) : null;
             const entry = entryInput && !entryInput.disabled ? parseCurrency(entryInput.value) : null;
 
@@ -123,7 +123,7 @@
             }
 
             if (balanceDisplay) {
-                if (method === 'Outro') {
+                if (method === 'Pagamento parcelado') {
                     if (total !== null && entry !== null) {
                         const balance = Math.max(total - entry, 0);
                         balanceDisplay.textContent = formatCurrency(balance);
@@ -146,7 +146,7 @@
         };
 
         const toggleSections = () => {
-            const method = methodSelect ? methodSelect.value : 'À vista';
+            const method = methodSelect ? methodSelect.value : 'Pagamento único';
             sections.forEach((section) => {
                 const isActive = section.dataset.paymentSection === method;
                 section.classList.toggle('hidden', !isActive);

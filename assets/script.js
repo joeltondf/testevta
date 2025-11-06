@@ -344,7 +344,6 @@ const ProcessForm = {
      */
     form: null,
     formaPagamentoSelect: null,
-    paymentSections: [],
     parcelasWrapper: null,
     parcela1Fields: null,
     parcela2Fields: null,
@@ -389,24 +388,23 @@ const ProcessForm = {
      */
     _setupPaymentLogic() {
         // Seleciona os elementos do DOM uma única vez.
-        this.formaPagamentoSelect = this.form.querySelector('[name="orcamento_forma_pagamento"]');
-        this.paymentSections = Array.from(this.form.querySelectorAll('[data-billing-section]'));
-
-        if (!this.formaPagamentoSelect) {
-            return;
-        }
-
-        // Elementos do layout legado continuam sendo suportados por compatibilidade.
+        this.formaPagamentoSelect = document.getElementById('orcamento_forma_pagamento');
         this.parcelasWrapper = document.getElementById('parcelas-wrapper');
         this.parcela1Fields = document.getElementById('parcela-1-fields');
         this.parcela2Fields = document.getElementById('parcela-2-fields');
         this.parcelaToggles = document.querySelectorAll('input[name="orcamento_parcelas"]');
 
+        if (!this.formaPagamentoSelect || !this.parcelasWrapper || !this.parcela1Fields || !this.parcela2Fields) {
+            return; // Encerra se algum elemento essencial não for encontrado.
+        }
+
+        // Adiciona os listeners
         this.formaPagamentoSelect.addEventListener('change', this._updatePaymentView.bind(this));
         this.parcelaToggles.forEach(toggle => {
             toggle.addEventListener('change', this._updatePaymentView.bind(this));
         });
 
+        // Chama a função uma vez no início para definir o estado visual correto.
         this._updatePaymentView();
     },
 
@@ -415,95 +413,26 @@ const ProcessForm = {
      * @private
      */
     _updatePaymentView() {
-        if (!this.formaPagamentoSelect) {
-            return;
-        }
-
-        const paymentMethod = this._normalizePaymentMethod(this.formaPagamentoSelect.value);
-
-        if (this.paymentSections.length > 0) {
-            this.paymentSections.forEach(section => {
-                const sectionMethod = this._normalizePaymentMethod(section.dataset.billingSection || '');
-                const isActive = sectionMethod === paymentMethod;
-                section.classList.toggle('hidden', !isActive);
-
-                section.querySelectorAll('[data-field-name]').forEach(field => {
-                    this._toggleFieldState(field, isActive);
-                });
-            });
-            return;
-        }
-
-        if (!this.parcelasWrapper || !this.parcela1Fields || !this.parcela2Fields) {
-            return;
-        }
-
+        const paymentMethod = this.formaPagamentoSelect.value;
         const selectedParcelaRadio = document.querySelector('input[name="orcamento_parcelas"]:checked');
         const selectedParcela = selectedParcelaRadio ? selectedParcelaRadio.value : '1';
 
+        // Esconde todos os campos relacionados para um estado limpo.
         this.parcelasWrapper.classList.add('hidden-section');
         this.parcela1Fields.classList.add('hidden-section');
         this.parcela2Fields.classList.add('hidden-section');
 
-        if (paymentMethod === 'À vista') {
+        if (paymentMethod === 'A vista') {
             this.parcelasWrapper.classList.remove('hidden-section');
             if (selectedParcela === '1') {
                 this.parcela1Fields.classList.remove('hidden-section');
             } else {
                 this.parcela2Fields.classList.remove('hidden-section');
             }
-        } else if (paymentMethod === 'Outro') {
+        } else if (paymentMethod === 'Faturado') {
+            // "Faturado" usa os mesmos campos da primeira parcela (Valor e Data).
             this.parcela1Fields.classList.remove('hidden-section');
         }
-    },
-
-    _toggleFieldState(field, enabled) {
-        if (!field) {
-            return;
-        }
-
-        if (enabled) {
-            const fieldName = field.dataset.fieldName;
-            if (fieldName) {
-                field.name = fieldName;
-            }
-            field.disabled = false;
-            return;
-        }
-
-        field.disabled = true;
-        if (field.dataset.fieldName) {
-            field.removeAttribute('name');
-        }
-
-        if (field.type === 'file') {
-            field.value = '';
-        }
-    },
-
-    _normalizePaymentMethod(method) {
-        const rawValue = typeof method === 'string' ? method : '';
-        const normalized = rawValue
-            ? (rawValue.normalize ? rawValue.normalize('NFD') : rawValue)
-                .replace(/\p{Diacritic}/gu, '')
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, ' ')
-            : '';
-
-        if (normalized === '' || ['a vista', 'avista', 'pagamento unico', 'pagamento a vista'].includes(normalized)) {
-            return 'À vista';
-        }
-
-        if (['mensal', 'mensalidade', 'pagamento mensal'].includes(normalized)) {
-            return 'Mensal';
-        }
-
-        if (['outro', 'parcelado', 'pagamento parcelado', 'faturado'].includes(normalized)) {
-            return 'Outro';
-        }
-
-        return 'À vista';
     },
 
     /**

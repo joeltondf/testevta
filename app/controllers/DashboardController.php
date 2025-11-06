@@ -145,7 +145,7 @@ class DashboardController
             'ativos' => 'Serviços em Andamento',
             'pendentes' => 'Serviços Pendentes',
             'orcamentos' => 'Orçamentos Pendentes',
-            'finalizados_mes' => 'Finalizados (Mês)',
+            'finalizados_mes' => 'Concluídos (Mês)',
             'atrasados' => 'Serviços Atrasados',
         ];
 

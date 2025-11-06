@@ -10,7 +10,7 @@ require_once __DIR__ . '/Configuracao.php';
 
 class Processo
 {
-    public const TV_PANEL_EXCLUDED_STATUSES = ['Finalizado', 'Concluído', 'Cancelado', 'Recusado'];
+    public const TV_PANEL_EXCLUDED_STATUSES = ['Concluído', 'Finalizado', 'Cancelado', 'Recusado'];
     private $pdo;
     private array $processColumns = [];
     private ?int $defaultVendorId = null;
@@ -202,7 +202,7 @@ public function create($data, $files)
             'colaborador_id' => $_SESSION['user_id'],
             'vendedor_id' => $this->resolveVendorId($data),
             'titulo' => $data['titulo'] ?? 'Orçamento #' . $orcamento_numero,
-            'status_processo' => $this->normalizeStatusValue($data['status_processo'] ?? $data['status'] ?? 'Orçamento'),
+            'status_processo' => $data['status_processo'] ?? $data['status'] ?? 'Orçamento',
             'orcamento_numero' => $orcamento_numero,
             'orcamento_origem' => $data['orcamento_origem'] ?? null,
             'orcamento_prazo_calculado' => $prazo_formatado,
@@ -298,7 +298,7 @@ public function create($data, $files)
                     c.nome_cliente, 
                     u_vendedor.nome_completo as nome_vendedor, -- Pega o nome da tabela 'users'
                     t.nome_tradutor 
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 LEFT JOIN clientes c ON p.cliente_id = c.id
                 LEFT JOIN vendedores v ON p.vendedor_id = v.id
                 LEFT JOIN users u_vendedor ON v.user_id = u_vendedor.id -- FAZ O JOIN ADICIONAL AQUI
@@ -339,7 +339,6 @@ public function create($data, $files)
         $stmtOldStatus = $this->pdo->prepare("SELECT status_processo FROM processos WHERE id = ?");
         $stmtOldStatus->execute([$id]);
         $oldStatus = $stmtOldStatus->fetchColumn();
-        $oldStatusNormalized = $this->normalizeStatusValue($oldStatus);
 
         $this->pdo->beginTransaction();
         try {
@@ -370,14 +369,12 @@ public function create($data, $files)
                 'codigo_cenario_fiscal = :codigo_cenario_fiscal',
             ];
 
-            $normalizedStatus = $this->normalizeStatusValue($data['status_processo'] ?? 'Orçamento');
-
             $params = [
                 'id' => $id,
                 'cliente_id' => $data['cliente_id'],
                 'vendedor_id' => $this->resolveVendorId($data),
                 'titulo' => $data['titulo'],
-                'status_processo' => $normalizedStatus,
+                'status_processo' => $data['status_processo'] ?? 'Orçamento',
                 'orcamento_origem' => $data['orcamento_origem'] ?? null,
                 'categorias_servico' => isset($data['categorias_servico']) ? implode(',', $data['categorias_servico']) : null,
                 'idioma' => $data['idioma'] ?? null,
@@ -418,11 +415,11 @@ public function create($data, $files)
             }
             
             // --- INÍCIO DA NOVA LÓGICA DE LANÇAMENTO FINANCEIRO ---
-            $newStatus = $normalizedStatus;
-            $statusTrigger = ['Serviço Pendente', 'Serviço em Andamento', 'Aguardando pagamento']; // Status que disparam a criação da receita
+            $newStatus = $data['status_processo'];
+            $statusTrigger = ['Serviço Pendente', 'Serviço em Andamento', 'Serviço pendente', 'Serviço em andamento', 'Aguardando pagamento']; // Status que disparam a criação da receita
 
             // Dispara a lógica apenas se o status MUDOU para um dos status do gatilho
-            if ($oldStatusNormalized !== $newStatus && in_array($newStatus, $statusTrigger, true)) {
+            if ($oldStatus != $newStatus && in_array($newStatus, $statusTrigger)) {
                 // Instancia os models necessários
                 require_once __DIR__ . '/LancamentoFinanceiro.php';
                 require_once __DIR__ . '/CategoriaFinanceira.php';
@@ -638,7 +635,7 @@ public function create($data, $files)
                     p.data_previsao_entrega, p.valor_total, c.nome_cliente,
                     u_colab.nome_completo as nome_colaborador,
                     u_vend.nome_completo as nome_vendedor
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 JOIN clientes c ON p.cliente_id = c.id
                 JOIN users u_colab ON p.colaborador_id = u_colab.id
                 LEFT JOIN vendedores v ON p.vendedor_id = v.id
@@ -668,7 +665,7 @@ public function create($data, $files)
                     (SELECT COUNT(*) FROM documentos d WHERE d.processo_id = p.id) as total_documentos_contagem,
                     (SELECT COALESCE(SUM(d.quantidade), 0) FROM documentos d WHERE d.processo_id = p.id) as total_documentos_soma";
 
-    $from_part = " FROM processos AS p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+    $from_part = " FROM processos AS p
                     JOIN clientes AS c ON p.cliente_id = c.id
                     LEFT JOIN tradutores AS t ON p.tradutor_id = t.id
                     LEFT JOIN vendedores AS vend ON p.vendedor_id = vend.id
@@ -800,7 +797,7 @@ public function create($data, $files)
      */
     public function getTotalFilteredProcessesCount(array $filters = []): int
     {
-        $sql = "SELECT COUNT(*) FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+        $sql = "SELECT COUNT(*) FROM processos p
             JOIN clientes c ON p.cliente_id = c.id";
         $params = [];
         $where_clauses = [];
@@ -912,7 +909,7 @@ public function create($data, $files)
                             ELSE p.data_previsao_entrega
                         END
                     ) AS prazo_estimado
-                FROM processos AS p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos AS p
                 JOIN clientes AS c ON p.cliente_id = c.id
                 LEFT JOIN tradutores AS t ON p.tradutor_id = t.id
                 LEFT JOIN vendedores AS vend ON p.vendedor_id = vend.id
@@ -992,7 +989,10 @@ public function create($data, $files)
             'Orçamento Pendente',
             'Serviço Pendente',
             'Serviço em Andamento',
-            'Aguardando pagamento',
+            'Serviço',
+            'Serviço Pendente com Serviço',
+            'Serviço em andamento',
+            'Concluído',
             'Finalizado',
             'Cancelado',
             'Recusado',
@@ -1069,7 +1069,7 @@ public function create($data, $files)
         $selectParts[] = 'COALESCE(comm.total_comissao_sdr, 0) AS total_comissao_sdr';
 
 
-        $sql = 'SELECT ' . implode(",\n               ", $selectParts) . "\n                FROM processos AS p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)\n                JOIN clientes AS c ON p.cliente_id = c.id\n                LEFT JOIN vendedores AS v ON p.vendedor_id = v.id\n                LEFT JOIN users AS u ON v.user_id = u.id\n                LEFT JOIN formas_pagamento AS fp ON p.forma_pagamento_id = fp.id\n                LEFT JOIN (\n                    SELECT venda_id,\n                           SUM(CASE WHEN tipo_comissao = 'vendedor' THEN valor_comissao ELSE 0 END) AS total_comissao_vendedor,\n                           SUM(CASE WHEN tipo_comissao = 'sdr' THEN valor_comissao ELSE 0 END) AS total_comissao_sdr\n                    FROM comissoes\n                    GROUP BY venda_id\n                ) comm ON comm.venda_id = p.id";
+        $sql = 'SELECT ' . implode(",\n               ", $selectParts) . "\n                FROM processos AS p\n                JOIN clientes AS c ON p.cliente_id = c.id\n                LEFT JOIN vendedores AS v ON p.vendedor_id = v.id\n                LEFT JOIN users AS u ON v.user_id = u.id\n                LEFT JOIN formas_pagamento AS fp ON p.forma_pagamento_id = fp.id\n                LEFT JOIN (\n                    SELECT venda_id,\n                           SUM(CASE WHEN tipo_comissao = 'vendedor' THEN valor_comissao ELSE 0 END) AS total_comissao_vendedor,\n                           SUM(CASE WHEN tipo_comissao = 'sdr' THEN valor_comissao ELSE 0 END) AS total_comissao_sdr\n                    FROM comissoes\n                    GROUP BY venda_id\n                ) comm ON comm.venda_id = p.id";
 
         $where = ["p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado')"];
         $params = [];
@@ -1121,7 +1121,7 @@ public function create($data, $files)
      */
     public function getOverallFinancialSummary($start_date, $end_date, array $filters = []): array
     {
-        $base_where_sql = " FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao) WHERE p.data_criacao BETWEEN :start_date AND :end_date AND p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado')";
+        $base_where_sql = " FROM processos p WHERE p.data_criacao BETWEEN :start_date AND :end_date AND p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado')";
         $params = [
             ':start_date' => $start_date . ' 00:00:00',
             ':end_date' => $end_date . ' 23:59:59'
@@ -1142,7 +1142,7 @@ public function create($data, $files)
 
         $valorRecebidoExpr = $this->getValorRecebidoExpression();
         $valorRestanteExpr = $this->getValorRestanteExpression();
-        $conditionsSql = substr($base_where_sql, strlen(' FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)'));
+        $conditionsSql = substr($base_where_sql, strlen(' FROM processos p'));
 
         $sql_totals = "SELECT
                         SUM(COALESCE(p.valor_total, 0)) AS total_valor_total,
@@ -1150,12 +1150,12 @@ public function create($data, $files)
                         SUM({$valorRestanteExpr}) AS total_valor_restante,
                         SUM(CASE WHEN c.tipo_comissao = 'vendedor' THEN COALESCE(c.valor_comissao, 0) ELSE 0 END) AS total_comissao_vendedor,
                         SUM(CASE WHEN c.tipo_comissao = 'sdr' THEN COALESCE(c.valor_comissao, 0) ELSE 0 END) AS total_comissao_sdr
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 LEFT JOIN comissoes c ON c.venda_id = p.id" . $conditionsSql;
 
         $sql_docs_count = "SELECT SUM(d.quantidade)
                            FROM documentos d
-                           JOIN processos p ON d.processo_id = p.id " . ltrim($base_where_sql, ' FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)');
+                           JOIN processos p ON d.processo_id = p.id " . ltrim($base_where_sql, ' FROM processos p');
 
         try {
             $stmt_totals = $this->pdo->prepare($sql_totals);
@@ -1216,7 +1216,7 @@ public function create($data, $files)
                     SUM(CASE WHEN p.status_processo IN ('Serviço Pendente', 'Serviço pendente', 'Serviço em Andamento', 'Serviço em andamento', 'Aguardando pagamento') THEN COALESCE(p.valor_total, 0) ELSE 0 END) AS pipelineValue,
                     SUM(CASE WHEN p.status_processo IN ('Concluído', 'Finalizado') THEN 1 ELSE 0 END) AS closedCount,
                     SUM(CASE WHEN p.status_processo IN ('Concluído', 'Finalizado') THEN COALESCE(p.valor_total, 0) ELSE 0 END) AS closedValue
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 $whereSql";
 
         $stmt = $this->pdo->prepare($sql);
@@ -1323,7 +1323,7 @@ public function create($data, $files)
                     SUM({$valorRestanteExpr}) AS total_valor_restante,
                     SUM(COALESCE(comm.total_comissao_vendedor, 0)) AS total_comissao_vendedor,
                     SUM(COALESCE(comm.total_comissao_sdr, 0)) AS total_comissao_sdr
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 LEFT JOIN (
                     SELECT venda_id,
                            SUM(CASE WHEN tipo_comissao = 'vendedor' THEN valor_comissao ELSE 0 END) AS total_comissao_vendedor,
@@ -1504,7 +1504,7 @@ public function create($data, $files)
     {
         // Para a seção "Últimos Orçamentos", ignoramos os serviços de clientes mensalistas
         $sql = "SELECT p.id, p.orcamento_numero, p.titulo, p.data_criacao, c.nome_cliente
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 JOIN clientes c ON p.cliente_id = c.id
                 WHERE p.status_processo = 'Orçamento'
                 ORDER BY p.data_criacao DESC
@@ -1542,17 +1542,10 @@ public function create($data, $files)
             'finalizacao_tipo', 'data_envio_cartorio', 'codigo_pedido_integracao', 'os_numero_omie'
         ];
 
-        if (isset($data['status_processo'])) {
-            $normalizedStatus = $this->normalizeStatusValue($data['status_processo']);
-            if ($normalizedStatus !== null) {
-                $data['status_processo'] = $normalizedStatus;
-                if ($normalizedStatus === 'Finalizado') {
-                    $data['data_finalizacao_real'] = date('Y-m-d H:i:s');
-                    $allowed_fields[] = 'data_finalizacao_real';
-                }
-            } else {
-                unset($data['status_processo']);
-            }
+        // Adiciona a data de finalização apenas se o status for 'Concluído'
+        if (isset($data['status_processo']) && in_array($data['status_processo'], ['Concluído', 'Finalizado'], true)) {
+            $data['data_finalizacao_real'] = date('Y-m-d H:i:s');
+            $allowed_fields[] = 'data_finalizacao_real'; // Adiciona à lista de permissões
         }
 
         $fieldsToUpdate = [];
@@ -1592,16 +1585,9 @@ public function create($data, $files)
      */
     public function updateStatus(int $id, array $data): bool
     {
-        if (isset($data['status_processo'])) {
-            $normalizedStatus = $this->normalizeStatusValue($data['status_processo']);
-            if ($normalizedStatus !== null) {
-                $data['status_processo'] = $normalizedStatus;
-                if ($normalizedStatus === 'Finalizado') {
-                    $data['data_finalizacao_real'] = date('Y-m-d H:i:s');
-                }
-            } else {
-                unset($data['status_processo']);
-            }
+        // LÓGICA DA VERSÃO ANTIGA: Adiciona a data de finalização automaticamente.
+        if (isset($data['status_processo']) && in_array($data['status_processo'], ['Concluído', 'Finalizado'], true)) {
+            $data['data_finalizacao_real'] = date('Y-m-d H:i:s');
         }
 
         // LÓGICA DA NOVA VERSÃO: Constrói a query de forma flexível.
@@ -1964,7 +1950,7 @@ public function create($data, $files)
     public function getVendasTotalMesByVendedor(int $vendedorId): float
     {
         $sql = "SELECT SUM(p.valor_total) as total_vendas_mes
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 WHERE p.vendedor_id = :vendedor_id
                   AND p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado')
                   AND MONTH(p.data_criacao) = MONTH(CURDATE())
@@ -1994,7 +1980,7 @@ public function create($data, $files)
                         u.nome_completo AS nome_vendedor,
                         c.nome_cliente,
                         (SELECT SUM(d.quantidade) FROM documentos d WHERE d.processo_id = p.id) as total_documentos
-                    FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                    FROM processos p
                     JOIN vendedores v ON p.vendedor_id = v.id
                     JOIN users u ON v.user_id = u.id
                     JOIN clientes c ON p.cliente_id = c.id
@@ -2060,7 +2046,7 @@ public function create($data, $files)
                 'vendedor_id'     => $data['vendedor_id'],
                 'titulo'          => $data['titulo'] ?? ('Orçamento #' . $orcamento_numero),
                 'valor_total'     => $data['valor_proposto'] ?? 0.00,
-                'status_processo' => $this->normalizeStatusValue($data['status_processo'] ?? 'Orçamento'),
+                'status_processo' => $data['status_processo'] ?? 'Orçamento',
                 'orcamento_numero'=> $orcamento_numero,
                 'data_entrada'    => date('Y-m-d'),
                 'codigo_pedido_integracao' => $this->sanitizeNullableString($data['codigo_pedido_integracao'] ?? null)
@@ -2107,7 +2093,7 @@ public function create($data, $files)
     public function getProcessoDoAnexo($anexoId)
     {
         $sql = "SELECT p.*, c.user_id as cliente_user_id
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 JOIN clientes c ON p.cliente_id = c.id
                 JOIN processo_anexos_gdrive pa ON p.id = pa.processo_id
                 WHERE pa.id = ?";
@@ -2121,7 +2107,7 @@ public function create($data, $files)
         $sql = "SELECT 
                     p.id, p.orcamento_numero, p.traducao_prazo_data, p.status_processo,
                     c.nome_cliente
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 JOIN clientes c ON p.cliente_id = c.id
                 WHERE 
                     p.traducao_prazo_data IS NOT NULL
@@ -2182,7 +2168,7 @@ public function create($data, $files)
                     cf.servico_tipo,
                     COUNT(doc.id) AS quantidade,
                     SUM(doc.valor_unitario) AS valor_total
-                FROM processos p USE INDEX (idx_processos_status, idx_processos_data_inicio_traducao)
+                FROM processos p
                 JOIN documentos doc ON p.id = doc.processo_id
                 JOIN categorias_financeiras cf ON doc.tipo_documento = cf.nome_categoria
                 WHERE
@@ -2565,57 +2551,5 @@ public function create($data, $files)
 
         $digits = preg_replace('/\D+/', '', (string)$value);
         return $digits === '' ? null : (int)$digits;
-    }
-
-    private function normalizeStatusValue(?string $status): ?string
-    {
-        if ($status === null) {
-            return null;
-        }
-
-        $normalized = mb_strtolower(trim($status));
-        if ($normalized === '') {
-            return null;
-        }
-
-        $map = [
-            'orcamento' => 'Orçamento',
-            'orçamento' => 'Orçamento',
-            'orcamento pendente' => 'Orçamento Pendente',
-            'orçamento pendente' => 'Orçamento Pendente',
-            'pendente' => 'Serviço Pendente',
-            'aprovado' => 'Serviço Pendente',
-            'servico pendente' => 'Serviço Pendente',
-            'serviço pendente' => 'Serviço Pendente',
-            'servico pendente com servico' => 'Serviço Pendente',
-            'serviço pendente com serviço' => 'Serviço Pendente',
-            'servico em andamento' => 'Serviço em Andamento',
-            'serviço em andamento' => 'Serviço em Andamento',
-            'em andamento' => 'Serviço em Andamento',
-            'servico' => 'Serviço em Andamento',
-            'serviço' => 'Serviço em Andamento',
-            'aguardando pagamento' => 'Aguardando pagamento',
-            'aguardando pagto' => 'Aguardando pagamento',
-            'finalizado' => 'Finalizado',
-            'finalizada' => 'Finalizado',
-            'concluido' => 'Finalizado',
-            'concluida' => 'Finalizado',
-            'concluído' => 'Finalizado',
-            'concluída' => 'Finalizado',
-            'cancelado' => 'Cancelado',
-            'cancelada' => 'Cancelado',
-            'arquivado' => 'Cancelado',
-            'arquivada' => 'Cancelado',
-            'recusado' => 'Recusado',
-            'recusada' => 'Recusado',
-            'reprovado' => 'Recusado',
-            'reprovada' => 'Recusado',
-        ];
-
-        if (array_key_exists($normalized, $map)) {
-            return $map[$normalized];
-        }
-
-        return ucfirst($normalized);
     }
 }
