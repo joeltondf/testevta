@@ -431,28 +431,6 @@ class OmieService {
         return $this->makeRequest('/servicos/os/', 'IncluirOS', $payload);
     }
 
-    public function ensureCodigoPedidoIntegracao(array $processo): string
-    {
-        $processId = (int)($processo['id'] ?? 0);
-        if ($processId <= 0) {
-            throw new InvalidArgumentException('Processo inválido para gerar o código de integração.');
-        }
-
-        $codigo = $this->resolvePedidoIntegracaoCodigo($processo, $processId);
-        $codigoNormalizado = $this->normalizeString($codigo);
-
-        if ($codigoNormalizado === null || $codigoNormalizado === '') {
-            throw new RuntimeException('Falha ao determinar o código de integração do pedido para a Omie.');
-        }
-
-        if ($codigoNormalizado !== $codigo) {
-            $this->getProcessoModel()->salvarCodigoPedidoIntegracao($processId, $codigoNormalizado);
-            return $codigoNormalizado;
-        }
-
-        return $codigo;
-    }
-
     private function fetchProcessData(int $processoId): array
     {
         $processData = $this->getProcessoModel()->getById($processoId);

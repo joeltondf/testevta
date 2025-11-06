@@ -491,10 +491,6 @@ class ClientesController
         $data['endereco'] = trim((string) ($data['endereco'] ?? ''));
         $data['bairro'] = trim((string) ($data['bairro'] ?? ''));
 
-        if (array_key_exists('codigo_cliente_integracao', $data)) {
-            $data['codigo_cliente_integracao'] = trim((string) $data['codigo_cliente_integracao']);
-        }
-
         $numero = trim((string) ($data['numero'] ?? ''));
         $data['numero'] = $numero === '' ? 'N/A' : $numero;
 

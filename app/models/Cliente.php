@@ -145,11 +145,6 @@ class Cliente
                 $params[] = $data['telefone_numero'] ?? null;
             }
 
-            if ($this->supportsIntegrationCodeColumn() && array_key_exists('codigo_cliente_integracao', $data)) {
-                $setParts[] = 'codigo_cliente_integracao = ?';
-                $params[] = $this->sanitizeIntegrationCode($data['codigo_cliente_integracao']);
-            }
-
             $params[] = $id;
 
             $sql = 'UPDATE clientes SET ' . implode(', ', $setParts) . ' WHERE id = ?';
@@ -503,12 +498,6 @@ class Cliente
                 $params[':telefone_numero'] = $data['telefone_numero'] ?? null;
             }
 
-            if ($this->supportsIntegrationCodeColumn()) {
-                $columns[] = 'codigo_cliente_integracao';
-                $placeholders[] = ':codigo_cliente_integracao';
-                $params[':codigo_cliente_integracao'] = $this->sanitizeIntegrationCode($data['codigo_cliente_integracao'] ?? null);
-            }
-
             $sql = sprintf(
                 'INSERT INTO clientes (%s) VALUES (%s)',
                 implode(', ', $columns),
@@ -582,16 +571,6 @@ class Cliente
         }
 
         return $this->integrationCodeColumnAvailable;
-    }
-
-    private function sanitizeIntegrationCode($value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $trimmed = trim((string)$value);
-        return $trimmed === '' ? null : $trimmed;
     }
 
     private function getPhoneColumnAvailability(): array
