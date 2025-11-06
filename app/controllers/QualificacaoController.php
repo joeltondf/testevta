@@ -2,8 +2,6 @@
 
 require_once __DIR__ . '/../models/Prospeccao.php';
 require_once __DIR__ . '/../models/User.php';
-require_once __DIR__ . '/../models/Cliente.php';
-require_once __DIR__ . '/../models/Processo.php';
 require_once __DIR__ . '/../services/LeadDistributor.php';
 
 class QualificacaoController
@@ -11,8 +9,6 @@ class QualificacaoController
     private $pdo;
     private $prospectionModel;
     private $userModel;
-    private Cliente $clienteModel;
-    private Processo $processoModel;
     private LeadDistributor $leadDistributor;
 
     public function __construct($pdo)
@@ -20,8 +16,6 @@ class QualificacaoController
         $this->pdo = $pdo;
         $this->prospectionModel = new Prospeccao($pdo);
         $this->userModel = new User($pdo);
-        $this->clienteModel = new Cliente($pdo);
-        $this->processoModel = new Processo($pdo);
         $this->leadDistributor = new LeadDistributor($pdo);
     }
 
@@ -113,26 +107,9 @@ class QualificacaoController
                 $meetingDateTime = $this->buildDateTime($meetingDate, $meetingTime);
 
                 $this->prospectionModel->updateLeadStatus($prospeccaoId, 'Qualificado');
-
-                $conversionSummary = $this->convertQualifiedLead($lead, $vendorId, (int) ($qualificationPayload['sdrId'] ?? 0));
-                $convertedLead = $lead;
-                $convertedLead['cliente_id'] = $conversionSummary['clienteId'];
-
                 if ($meetingDateTime instanceof \DateTimeImmutable) {
-                    $this->createMeeting($convertedLead, $vendorId, $meetingTitle, $meetingDateTime, $meetingLink, $meetingNotes);
+                    $this->createMeeting($lead, $vendorId, $meetingTitle, $meetingDateTime, $meetingLink, $meetingNotes);
                 }
-
-                $this->prospectionModel->updateLeadStatus($prospeccaoId, 'Convertido');
-                $this->prospectionModel->logInteraction(
-                    $prospeccaoId,
-                    (int) ($_SESSION['user_id'] ?? 0),
-                    sprintf(
-                        'Lead convertido automaticamente em cliente #%d com processo #%d.',
-                        $conversionSummary['clienteId'] ?? 0,
-                        $conversionSummary['processoId'] ?? 0
-                    ),
-                    'log_sistema'
-                );
             } else {
                 $this->prospectionModel->updateResponsavelAndStatus($prospeccaoId, null, 'Descartado');
             }
@@ -247,99 +224,5 @@ class QualificacaoController
         }
 
         $stmt->execute();
-    }
-
-    private function convertQualifiedLead(array $lead, int $vendorId, int $sdrId): array
-    {
-        $leadId = (int) ($lead['id'] ?? 0);
-        if ($leadId <= 0) {
-            throw new \RuntimeException('Lead inválido para conversão automática.');
-        }
-
-        $clientId = (int) ($lead['cliente_id'] ?? 0);
-        $clientCreated = false;
-
-        if ($clientId <= 0) {
-            $clientPayload = $this->buildClientPayloadFromLead($lead);
-            $newClientId = $this->clienteModel->create($clientPayload);
-
-            if (!is_numeric($newClientId) || (int) $newClientId <= 0) {
-                throw new \RuntimeException('Não foi possível criar o cliente a partir da prospecção qualificada.');
-            }
-
-            $clientId = (int) $newClientId;
-            $clientCreated = true;
-
-            $updateStmt = $this->pdo->prepare('UPDATE prospeccoes SET cliente_id = :clientId WHERE id = :leadId');
-            $updateStmt->bindValue(':clientId', $clientId, PDO::PARAM_INT);
-            $updateStmt->bindValue(':leadId', $leadId, PDO::PARAM_INT);
-            $updateStmt->execute();
-        } else {
-            $this->clienteModel->promoteProspectToClient($clientId);
-        }
-
-        $processTitle = $this->buildProcessTitle($lead, $clientId);
-        $processData = [
-            'cliente_id' => $clientId,
-            'colaborador_id' => $sdrId > 0 ? $sdrId : $vendorId,
-            'vendedor_id' => $vendorId,
-            'titulo' => $processTitle,
-            'valor_proposto' => $this->extractLeadValue($lead),
-            'status_processo' => 'Orçamento Pendente',
-        ];
-
-        $processId = $this->processoModel->createFromProspeccao($processData);
-        if (!$processId) {
-            throw new \RuntimeException('Não foi possível gerar o processo para o cliente qualificado.');
-        }
-
-        return [
-            'clienteId' => $clientId,
-            'processoId' => $processId,
-            'clientCreated' => $clientCreated,
-        ];
-    }
-
-    private function buildClientPayloadFromLead(array $lead): array
-    {
-        $leadName = trim((string) ($lead['nome_prospecto'] ?? ''));
-        $clientName = trim((string) ($lead['cliente_nome'] ?? ''));
-        $finalName = $clientName !== '' ? $clientName : ($leadName !== '' ? $leadName : 'Cliente sem nome');
-
-        return [
-            'nome_cliente' => $finalName,
-            'nome_responsavel' => $leadName !== '' ? $leadName : null,
-            'email' => $lead['email'] ?? null,
-            'telefone' => $lead['telefone'] ?? null,
-            'tipo_pessoa' => 'Jurídica',
-            'tipo_assessoria' => $lead['leadCategory'] ?? null,
-            'prazo_legalizacao_dias' => null,
-        ];
-    }
-
-    private function buildProcessTitle(array $lead, int $clientId): string
-    {
-        $title = trim((string) ($lead['nome_prospecto'] ?? ''));
-        if ($title !== '') {
-            return 'Orçamento - ' . $title;
-        }
-
-        $clientName = trim((string) ($lead['cliente_nome'] ?? ''));
-        if ($clientName !== '') {
-            return 'Orçamento - ' . $clientName;
-        }
-
-        return 'Orçamento para cliente #' . $clientId;
-    }
-
-    private function extractLeadValue(array $lead): float
-    {
-        $rawValue = $lead['valor_proposto'] ?? null;
-
-        if ($rawValue === null || $rawValue === '') {
-            return 0.0;
-        }
-
-        return is_numeric($rawValue) ? (float) $rawValue : 0.0;
     }
 }

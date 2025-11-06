@@ -32,7 +32,7 @@ class AddPaymentProfileToProspeccoesMigration
             return;
         }
 
-        $sql = "ALTER TABLE prospeccoes ADD COLUMN perfil_pagamento ENUM('Mensalista','À vista') NULL AFTER leadCategory";
+        $sql = "ALTER TABLE prospeccoes ADD COLUMN perfil_pagamento ENUM('mensalista','avista') NULL AFTER leadCategory";
         $this->pdo->exec($sql);
     }
 

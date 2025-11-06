@@ -19,25 +19,6 @@ class LeadDistributor
     }
 
     /**
-     * Garante que uma nova prospecção seja adicionada à fila de distribuição com status pendente.
-     */
-    public function enqueueProspection(int $leadId): void
-    {
-        $this->ensureQueueTableExists();
-
-        $sql = 'INSERT INTO ' . self::QUEUE_TABLE . ' (prospeccao_id, tentativas, status)
-                VALUES (:leadId, 0, "Pendente")
-                ON DUPLICATE KEY UPDATE
-                    status = "Pendente",
-                    mensagem_erro = NULL,
-                    atualizado_em = NOW()';
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':leadId', $leadId, PDO::PARAM_INT);
-        $stmt->execute();
-    }
-
-    /**
      * @return array{leadId:int,vendorId:int,vendorName:string}
      */
     public function distributeToNextSalesperson(int $leadId, ?int $sdrId = null): array
@@ -53,29 +34,25 @@ class LeadDistributor
             $this->pdo->beginTransaction();
         }
 
-        $vendorId = null;
-
         try {
-            $this->enqueueProspection($leadId);
-            $queueEntry = $this->lockQueueEntry($leadId);
+            $queue = $this->fetchQueueForUpdate();
+            $queue = $this->syncQueueWithActiveVendors($queue, $activeVendors);
 
-            if ($queueEntry === null) {
-                throw new RuntimeException('Não foi possível localizar a prospecção na fila de distribuição.');
+            if (empty($queue)) {
+                throw new RuntimeException('A fila de distribuição está vazia.');
             }
 
-            $vendorId = $this->selectNextVendorId($activeVendors);
-
-            if ($vendorId === null) {
-                throw new RuntimeException('Nenhum vendedor disponível para receber o lead.');
-            }
+            $nextVendorRow = array_shift($queue);
+            $vendorId = (int) $nextVendorRow['vendor_id'];
 
             if (!$this->prospectionModel->assignLeadToVendor($leadId, $vendorId, $sdrId, false)) {
                 throw new RuntimeException('Não foi possível atribuir o lead ao vendedor.');
             }
 
-            $this->prospectionModel->registerLeadDistribution($leadId, $vendorId, $sdrId);
+            $nextVendorRow['last_assigned_at'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+            $queue[] = $nextVendorRow;
 
-            $this->markQueueAsDistributed($leadId, $vendorId);
+            $this->persistQueue($queue);
 
             if ($ownsTransaction) {
                 $this->pdo->commit();
@@ -90,8 +67,6 @@ class LeadDistributor
             if ($ownsTransaction && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-
-            $this->markQueueAsError($leadId, $vendorId, $exception->getMessage());
 
             throw $exception;
         }
@@ -139,20 +114,139 @@ class LeadDistributor
             return null;
         }
 
-        $vendorId = $this->selectNextVendorId($activeVendors);
+        $ownsTransaction = !$this->pdo->inTransaction();
 
-        if ($vendorId === null) {
-            return null;
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
         }
 
-        $vendorStats = $this->fetchVendorDistributionStats(array_map('intval', array_keys($activeVendors)));
-        $lastAssignedAt = $vendorStats[$vendorId]['last_assigned'] ?? null;
+        try {
+            $queue = $this->fetchQueueForUpdate();
+            $queue = $this->syncQueueWithActiveVendors($queue, $activeVendors);
+            $this->persistQueue($queue);
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
 
-        return [
-            'vendorId' => $vendorId,
-            'vendorName' => $activeVendors[$vendorId]['nome_completo'] ?? 'Vendedor',
-            'lastAssignedAt' => $lastAssignedAt,
-        ];
+            if (empty($queue)) {
+                return null;
+            }
+
+            $nextRow = $queue[0];
+            $vendorId = (int) $nextRow['vendor_id'];
+            $vendor = $activeVendors[$vendorId] ?? null;
+
+            if ($vendor === null) {
+                return null;
+            }
+
+            return [
+                'vendorId' => $vendorId,
+                'vendorName' => $vendor['nome_completo'] ?? 'Vendedor',
+                'lastAssignedAt' => $nextRow['last_assigned_at'] ?? null
+            ];
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @return array<int, array{vendor_id:int,position:int,last_assigned_at:?string}>
+     */
+    private function fetchQueueForUpdate(): array
+    {
+        $this->ensureQueueTableExists();
+
+        $sql = 'SELECT vendor_id, position, last_assigned_at
+                FROM ' . self::QUEUE_TABLE . '
+                ORDER BY position ASC
+                FOR UPDATE';
+
+        $stmt = $this->pdo->query($sql);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @param array<int, array{vendor_id:int,position:int,last_assigned_at:?string}> $queue
+     * @param array<int, array<string, mixed>> $activeVendors
+     * @return array<int, array{vendor_id:int,position:int,last_assigned_at:?string}>
+     */
+    private function syncQueueWithActiveVendors(array $queue, array $activeVendors): array
+    {
+        $queueVendorIds = array_map(static fn ($row) => (int) $row['vendor_id'], $queue);
+        $activeVendorIds = array_map(static fn ($vendor) => (int) $vendor['id'], $activeVendors);
+
+        $queue = array_values(array_filter($queue, static function ($row) use ($activeVendorIds) {
+            return in_array((int) $row['vendor_id'], $activeVendorIds, true);
+        }));
+
+        foreach ($activeVendorIds as $vendorId) {
+            if (!in_array($vendorId, $queueVendorIds, true)) {
+                $queue[] = [
+                    'vendor_id' => $vendorId,
+                    'position' => count($queue) + 1,
+                    'last_assigned_at' => null
+                ];
+            }
+        }
+
+        usort($queue, static function ($a, $b) {
+            $aDate = $a['last_assigned_at'];
+            $bDate = $b['last_assigned_at'];
+
+            if ($aDate === $bDate) {
+                return ((int) $a['position']) <=> ((int) $b['position']);
+            }
+
+            if ($aDate === null) {
+                return -1;
+            }
+
+            if ($bDate === null) {
+                return 1;
+            }
+
+            return strcmp($aDate, $bDate);
+        });
+
+        $queue = array_values($queue);
+
+        foreach ($queue as $index => &$row) {
+            $row['position'] = $index + 1;
+        }
+
+        return $queue;
+    }
+
+    /**
+     * @param array<int, array{vendor_id:int,position:int,last_assigned_at:?string}> $queue
+     */
+    private function persistQueue(array $queue): void
+    {
+        $this->pdo->exec('DELETE FROM ' . self::QUEUE_TABLE);
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO ' . self::QUEUE_TABLE . ' (vendor_id, position, last_assigned_at)
+             VALUES (:vendorId, :position, :lastAssignedAt)'
+        );
+
+        foreach ($queue as $index => $row) {
+            $stmt->bindValue(':vendorId', (int) $row['vendor_id'], PDO::PARAM_INT);
+            $stmt->bindValue(':position', $index + 1, PDO::PARAM_INT);
+
+            if (!empty($row['last_assigned_at'])) {
+                $stmt->bindValue(':lastAssignedAt', $row['last_assigned_at']);
+            } else {
+                $stmt->bindValue(':lastAssignedAt', null, PDO::PARAM_NULL);
+            }
+
+            $stmt->execute();
+        }
     }
 
     /**
@@ -170,175 +264,16 @@ class LeadDistributor
         return $indexed;
     }
 
-    private function lockQueueEntry(int $leadId): ?array
-    {
-        $this->ensureQueueTableExists();
-
-        $sql = 'SELECT prospeccao_id, tentativas, proximo_vendedor_id, status
-                FROM ' . self::QUEUE_TABLE . '
-                WHERE prospeccao_id = :leadId
-                FOR UPDATE';
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':leadId', $leadId, PDO::PARAM_INT);
-        $stmt->execute();
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $row !== false ? $row : null;
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $activeVendors
-     */
-    private function selectNextVendorId(array $activeVendors): ?int
-    {
-        if (empty($activeVendors)) {
-            return null;
-        }
-
-        $vendorIds = array_map(static fn ($vendor) => (int) $vendor['id'], $activeVendors);
-        $stats = $this->fetchVendorDistributionStats($vendorIds);
-
-        $selectedVendorId = null;
-        $selectedCount = PHP_INT_MAX;
-        $selectedLastAssigned = null;
-
-        foreach ($vendorIds as $vendorId) {
-            $vendorStats = $stats[$vendorId] ?? ['total' => 0, 'last_assigned' => null];
-            $currentCount = (int) ($vendorStats['total'] ?? 0);
-            $currentLastAssigned = $vendorStats['last_assigned'] ?? null;
-
-            if ($selectedVendorId === null
-                || $currentCount < $selectedCount
-                || ($currentCount === $selectedCount && $this->isOlderAssignment($currentLastAssigned, $selectedLastAssigned))
-            ) {
-                $selectedVendorId = $vendorId;
-                $selectedCount = $currentCount;
-                $selectedLastAssigned = $currentLastAssigned;
-            }
-        }
-
-        return $selectedVendorId;
-    }
-
-    /**
-     * @param array<int> $vendorIds
-     * @return array<int, array{total:int,last_assigned:?string}>
-     */
-    private function fetchVendorDistributionStats(array $vendorIds): array
-    {
-        if (empty($vendorIds)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($vendorIds), '?'));
-
-        $sql = 'SELECT vendedorId, COUNT(*) AS total, MAX(createdAt) AS last_assigned
-                FROM distribuicao_leads
-                WHERE vendedorId IN (' . $placeholders . ')
-                GROUP BY vendedorId';
-
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($vendorIds as $index => $vendorId) {
-            $stmt->bindValue($index + 1, $vendorId, PDO::PARAM_INT);
-        }
-        $stmt->execute();
-
-        $stats = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vendorId = (int) ($row['vendedorId'] ?? 0);
-            if ($vendorId <= 0) {
-                continue;
-            }
-
-            $stats[$vendorId] = [
-                'total' => (int) ($row['total'] ?? 0),
-                'last_assigned' => $row['last_assigned'] ?? null,
-            ];
-        }
-
-        return $stats;
-    }
-
-    private function isOlderAssignment(?string $current, ?string $selected): bool
-    {
-        if ($selected === null) {
-            return true;
-        }
-
-        if ($current === null) {
-            return true;
-        }
-
-        return strcmp($current, $selected) < 0;
-    }
-
-    private function markQueueAsDistributed(int $leadId, int $vendorId): void
-    {
-        $sql = 'UPDATE ' . self::QUEUE_TABLE . '
-                SET tentativas = tentativas + 1,
-                    proximo_vendedor_id = :vendorId,
-                    status = "Distribuído",
-                    mensagem_erro = NULL,
-                    atualizado_em = NOW()
-                WHERE prospeccao_id = :leadId';
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':vendorId', $vendorId, PDO::PARAM_INT);
-        $stmt->bindValue(':leadId', $leadId, PDO::PARAM_INT);
-        $stmt->execute();
-
-        if ($stmt->rowCount() === 0) {
-            $this->enqueueProspection($leadId);
-            $stmt->execute();
-        }
-    }
-
-    private function markQueueAsError(int $leadId, ?int $vendorId, string $errorMessage): void
-    {
-        $this->ensureQueueTableExists();
-
-        $sql = 'UPDATE ' . self::QUEUE_TABLE . '
-                SET tentativas = tentativas + 1,
-                    status = "Erro",
-                    mensagem_erro = :message,
-                    atualizado_em = NOW(),
-                    proximo_vendedor_id = :vendorId
-                WHERE prospeccao_id = :leadId';
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':message', mb_substr($errorMessage, 0, 1000), PDO::PARAM_STR);
-        if ($vendorId !== null) {
-            $stmt->bindValue(':vendorId', $vendorId, PDO::PARAM_INT);
-        } else {
-            $stmt->bindValue(':vendorId', null, PDO::PARAM_NULL);
-        }
-        $stmt->bindValue(':leadId', $leadId, PDO::PARAM_INT);
-        $stmt->execute();
-
-        if ($stmt->rowCount() === 0) {
-            $this->enqueueProspection($leadId);
-            $stmt->execute();
-        }
-    }
-
     private function ensureQueueTableExists(): void
     {
         $sql = 'CREATE TABLE IF NOT EXISTS ' . self::QUEUE_TABLE . ' (
-                    prospeccao_id INT NOT NULL PRIMARY KEY,
-                    tentativas INT UNSIGNED NOT NULL DEFAULT 0,
-                    proximo_vendedor_id INT NULL,
-                    status ENUM("Pendente", "Distribuído", "Erro") NOT NULL DEFAULT "Pendente",
-                    mensagem_erro VARCHAR(1000) NULL,
-                    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    CONSTRAINT fk_lead_queue_prospeccao
-                        FOREIGN KEY (prospeccao_id) REFERENCES prospeccoes(id)
-                        ON DELETE CASCADE,
-                    CONSTRAINT fk_lead_queue_vendor
-                        FOREIGN KEY (proximo_vendedor_id) REFERENCES users(id)
-                        ON DELETE SET NULL
+                    vendor_id INT NOT NULL PRIMARY KEY,
+                    position INT NOT NULL,
+                    last_assigned_at DATETIME NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_lead_distribution_queue_vendor
+                        FOREIGN KEY (vendor_id) REFERENCES users(id)
+                        ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
         $this->pdo->exec($sql);

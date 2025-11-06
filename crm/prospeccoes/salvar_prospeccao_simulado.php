@@ -3,7 +3,6 @@
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../app/core/auth_check.php';
-require_once __DIR__ . '/../../app/services/LeadDistributor.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
@@ -40,10 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':status' => $status
         ]);
 
-        $prospeccao_id = (int) $pdo->lastInsertId();
-
-        $leadDistributor = new LeadDistributor($pdo);
-        $leadDistributor->enqueueProspection($prospeccao_id);
+        $prospeccao_id = $pdo->lastInsertId();
 
         // Gera e salva o ID em texto (PROS-0001)
         $id_texto = "PROS-" . str_pad($prospeccao_id, 4, '0', STR_PAD_LEFT);

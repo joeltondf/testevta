@@ -3,7 +3,6 @@
 require_once __DIR__ . '/../models/Prospeccao.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../services/SdrKanbanConfigService.php';
-require_once __DIR__ . '/../services/LeadDistributor.php';
 
 class SdrDashboardController
 {
@@ -11,7 +10,6 @@ class SdrDashboardController
     private $prospectionModel;
     private $userModel;
     private SdrKanbanConfigService $kanbanConfigService;
-    private LeadDistributor $leadDistributor;
 
     public function __construct($pdo)
     {
@@ -19,7 +17,6 @@ class SdrDashboardController
         $this->prospectionModel = new Prospeccao($pdo);
         $this->userModel = new User($pdo);
         $this->kanbanConfigService = new SdrKanbanConfigService($pdo);
-        $this->leadDistributor = new LeadDistributor($pdo);
     }
 
     public function index(): void
@@ -287,7 +284,6 @@ class SdrDashboardController
                 'vendorId' => $vendorId,
                 'sdrId' => $userId,
             ]);
-            $this->leadDistributor->enqueueProspection((int) $creationResult['prospectionId']);
         } catch (InvalidArgumentException $exception) {
             http_response_code(422);
             echo json_encode(['success' => false, 'message' => 'Não foi possível criar o lead.']);

@@ -4,13 +4,7 @@
 class Prospeccao
 {
     private $pdo;
-    private const ALLOWED_PAYMENT_PROFILES = [
-        'mensalista' => 'Mensalista',
-        'mensal' => 'Mensalista',
-        'à vista' => 'À vista',
-        'a vista' => 'À vista',
-        'avista' => 'À vista',
-    ];
+    private const ALLOWED_PAYMENT_PROFILES = ['mensalista', 'avista'];
 
     public function __construct($pdo)
     {
@@ -77,7 +71,7 @@ class Prospeccao
 
         $normalized = mb_strtolower(trim($profile), 'UTF-8');
 
-        return self::ALLOWED_PAYMENT_PROFILES[$normalized] ?? null;
+        return in_array($normalized, self::ALLOWED_PAYMENT_PROFILES, true) ? $normalized : null;
     }
 
     /**
