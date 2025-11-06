@@ -2097,21 +2097,21 @@ class ProcessosController
 
     private function syncClientSubscriptionServices(int $clienteId, string $tipoAssessoria, array $servicos): void
     {
+        $stmt = $this->pdo->prepare('UPDATE cliente_servicos_mensalistas SET ativo = 0, data_fim = CURDATE() WHERE cliente_id = ? AND ativo = 1');
+        $stmt->execute([$clienteId]);
+
         if ($tipoAssessoria !== 'Mensalista') {
-            $this->clienteModel->salvarServicosMensalista($clienteId, []);
             return;
         }
 
         if (empty($servicos)) {
-            $this->clienteModel->salvarServicosMensalista($clienteId, []);
             return;
         }
 
         $categoriaModel = new CategoriaFinanceira($this->pdo);
-        $servicosParaSalvar = [];
 
         foreach ($servicos as $servico) {
-            $produtoId = isset($servico['productBudgetId']) ? (int) $servico['productBudgetId'] : 0;
+            $produtoId = isset($servico['productBudgetId']) ? (int)$servico['productBudgetId'] : 0;
             if ($produtoId <= 0) {
                 continue;
             }
@@ -2122,7 +2122,7 @@ class ProcessosController
                 throw new InvalidArgumentException('Produto de orçamento inválido informado.');
             }
 
-            $valorPadraoProduto = isset($produto['valor_padrao']) ? (float) $produto['valor_padrao'] : null;
+            $valorPadraoProduto = isset($produto['valor_padrao']) ? (float)$produto['valor_padrao'] : null;
             $valorParaSalvar = $valorInformado ?? $valorPadraoProduto;
 
             if ($valorParaSalvar === null) {
@@ -2133,17 +2133,14 @@ class ProcessosController
                 throw new InvalidArgumentException('O valor informado está abaixo do mínimo permitido para o serviço mensalista.');
             }
 
-            $servicosParaSalvar[] = [
-                'produto_orcamento_id' => $produtoId,
-                'valor_padrao' => $valorParaSalvar,
-                'servico_tipo' => $produto['servico_tipo'] ?? 'Outros',
-                'ativo' => 1,
-                'data_inicio' => date('Y-m-d'),
-                'data_fim' => null,
-            ];
+            $stmtInsert = $this->pdo->prepare('INSERT INTO cliente_servicos_mensalistas (cliente_id, produto_orcamento_id, valor_padrao, servico_tipo, ativo, data_inicio) VALUES (?, ?, ?, ?, 1, CURDATE())');
+            $stmtInsert->execute([
+                $clienteId,
+                $produtoId,
+                $valorParaSalvar,
+                $produto['servico_tipo'] ?? 'Nenhum',
+            ]);
         }
-
-        $this->clienteModel->salvarServicosMensalista($clienteId, $servicosParaSalvar);
     }
 
     private function validateWizardProcessData(array $processo, array $input, bool $leadConversionRequested): void

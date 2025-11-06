@@ -951,11 +951,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(`api_cliente.php?id=${clienteId}`)
                 .then(response => response.json())
                 .then(data => {
-                    const receivedServices = (data.success && Array.isArray(data.servicos)) ? data.servicos : [];
-                    clienteCache.servicos = receivedServices.filter(servico => {
-                        const ativoValor = servico && servico.ativo !== undefined ? Number.parseInt(servico.ativo, 10) : 1;
-                        return !Number.isNaN(ativoValor) ? ativoValor === 1 : true;
-                    });
+                    clienteCache.servicos = (data.success && Array.isArray(data.servicos)) ? data.servicos : [];
                     refreshAllServiceSelects();
                     updateAllCalculations();
                     evaluateValorMinimo();
