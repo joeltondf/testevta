@@ -6,7 +6,6 @@ if (session_status() == PHP_SESSION_NONE) {
 $cliente = $cliente ?? [];
 $formData = isset($formData) && is_array($formData) ? $formData : [];
 $isEdit = isset($cliente['id']);
-$omieIntegrationEnabled = isset($omieIntegrationEnabled) ? (bool) $omieIntegrationEnabled : false;
 
 // A variável $return_url agora é definida corretamente pelo ClientesController.php
 
@@ -18,7 +17,6 @@ $formValues = array_merge($cliente, $formData);
 // Preenche as variáveis para os campos do formulário
 $nome_cliente = $formValues['nome_cliente'] ?? '';
 $prazo_legalizacao_dias = $formValues['prazo_legalizacao_dias'] ?? '';
-$codigo_cliente_integracao = $formValues['codigo_cliente_integracao'] ?? '';
 $nome_responsavel = $formValues['nome_responsavel'] ?? '';
 $cpf_cnpj = $formValues['cpf_cnpj'] ?? '';
 $email = $formValues['email'] ?? '';
@@ -335,23 +333,6 @@ require_once __DIR__ . '/../layouts/header.php';
                 </div>
             <?php endif; ?>
         </div>
-
-        <?php if ($omieIntegrationEnabled): ?>
-            <div class="cliente-form-row cliente-grid-1 mt-4">
-                <div class="cliente-form-col cliente-col-full">
-                    <label for="codigo_cliente_integracao" class="block text-sm font-semibold text-gray-700">Código de Integração (Omie)</label>
-                    <input
-                        type="text"
-                        id="codigo_cliente_integracao"
-                        name="codigo_cliente_integracao"
-                        value="<?php echo htmlspecialchars($codigo_cliente_integracao); ?>"
-                        class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Informe o código utilizado na Omie, se aplicável"
-                    >
-                    <p class="mt-1 text-xs text-gray-500">Deixe em branco para permitir que o sistema gere um código automaticamente durante a sincronização.</p>
-                </div>
-            </div>
-        <?php endif; ?>
     </div>
 
     <div id="mensalista-servicos-container" class="mt-6 pt-6 border-t col-span-1 md:col-span-2 <?= ($tipo_assessoria === 'Mensalista') ? '' : 'hidden' ?>">
@@ -455,7 +436,7 @@ require_once __DIR__ . '/../layouts/header.php';
         </div>
     </div>
 
-    <?php if ($isEdit && $omieIntegrationEnabled): ?>
+    <?php if ($isEdit): ?>
         <div class="md:col-span-2 mt-6 pt-6 border-t border-gray-200">
             <label class="inline-flex items-center cursor-pointer">
                 <input type="checkbox" name="sincronizar_omie" value="1" class="h-5 w-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" <?= $sincronizar_omie_checked ? 'checked' : '' ?>>

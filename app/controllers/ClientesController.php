@@ -23,7 +23,6 @@ class ClientesController
     private $clienteModel;
     private $pdo;
     private $omieService;
-    private bool $omieIntegrationEnabled;
 
     public function __construct($pdo)
     {
@@ -33,7 +32,6 @@ class ClientesController
         // Instancia o OmieService para uso automático
         $configModel = new Configuracao($pdo);
         $this->omieService = new OmieService($configModel, $pdo);
-        $this->omieIntegrationEnabled = $this->omieService->isIntegrationEnabled();
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -65,8 +63,6 @@ class ClientesController
             ? $formData['servicos_mensalistas']
             : [];
 
-        $omieIntegrationEnabled = $this->omieIntegrationEnabled;
-
         require_once __DIR__ . '/../views/layouts/header.php';
         require_once __DIR__ . '/../views/clientes/form.php';
         require_once __DIR__ . '/../views/layouts/footer.php';
@@ -90,8 +86,6 @@ class ClientesController
         if (isset($formData['servicos_mensalistas']) && is_array($formData['servicos_mensalistas'])) {
             $servicos_mensalista = $formData['servicos_mensalistas'];
         }
-
-        $omieIntegrationEnabled = $this->omieIntegrationEnabled;
 
         require_once __DIR__ . '/../views/layouts/header.php';
         require_once __DIR__ . '/../views/clientes/form.php';
