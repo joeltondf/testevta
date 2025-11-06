@@ -4,21 +4,15 @@
 require_once __DIR__ . '/../models/Processo.php';
 require_once __DIR__ . '/../models/Vendedor.php';
 require_once __DIR__ . '/../models/Cliente.php';
-require_once __DIR__ . '/../models/Prospeccao.php';
-require_once __DIR__ . '/../services/DashboardKanbanService.php';
-require_once __DIR__ . '/../controllers/QualificacaoController.php';
+require_once __DIR__ . '/../models/Prospeccao.php'; 
 
 class VendedorDashboardController
 {
     private $pdo;
-    private DashboardKanbanService $dashboardKanbanService;
-    private QualificacaoController $qualificationController;
 
     public function __construct($pdo)
     {
         $this->pdo = $pdo;
-        $this->dashboardKanbanService = new DashboardKanbanService($pdo);
-        $this->qualificationController = new QualificacaoController($pdo);
     }
 
     public function index()
@@ -113,13 +107,6 @@ class VendedorDashboardController
 
         $filters = $filtrosAtuais;
         $currentVendedorId = $vendedorId;
-        $kanbanFilters = $this->extractKanbanFilters($_GET ?? []);
-        $kanbanData = $this->dashboardKanbanService->buildVendorBoard($userId, $kanbanFilters);
-        $vendorKanbanStatuses = $kanbanData['available_statuses'];
-        $vendorKanbanLeads = $kanbanData['leads_by_status'];
-        $selectedKanbanStatuses = $kanbanData['selected_statuses'];
-        $kanbanFilterOptions = $kanbanData['filters'];
-        $qualificationMetrics = $this->qualificationController->getQualificationMetrics(null, $userId);
 
         // Carrega a view
         require_once __DIR__ . '/../views/layouts/header.php';
@@ -156,31 +143,6 @@ class VendedorDashboardController
         if (!empty($filters['status'])) {
             $statusInfo = $this->normalizeStatusData($filters['status']);
             $filters['status'] = $statusInfo['label'];
-        }
-
-        return $filters;
-    }
-
-    private function extractKanbanFilters(array $query): array
-    {
-        $filters = [];
-
-        if (!empty($query['kanban_status'])) {
-            $filters['statuses'] = array_filter((array) $query['kanban_status'], static function ($status) {
-                return is_string($status) && trim($status) !== '';
-            });
-        }
-
-        if (!empty($query['kanban_payment_profile'])) {
-            $filters['payment_profile'] = trim((string) $query['kanban_payment_profile']);
-        }
-
-        if (!empty($query['kanban_scope']) && trim((string) $query['kanban_scope']) === 'unassigned') {
-            $filters['only_unassigned'] = true;
-        }
-
-        if (!empty($query['kanban_sdr_id'])) {
-            $filters['sdr_id'] = (int) $query['kanban_sdr_id'];
         }
 
         return $filters;
