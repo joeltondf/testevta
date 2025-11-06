@@ -16,7 +16,7 @@ $formValues = array_merge($cliente, $formData);
 
 // Preenche as variáveis para os campos do formulário
 $nome_cliente = $formValues['nome_cliente'] ?? '';
-$prazo_legalizacao_dias = $formValues['prazo_legalizacao_dias'] ?? '';
+$prazo_acordado_dias = $formValues['prazo_acordado_dias'] ?? '';
 $nome_responsavel = $formValues['nome_responsavel'] ?? '';
 $cpf_cnpj = $formValues['cpf_cnpj'] ?? '';
 $email = $formValues['email'] ?? '';
@@ -321,13 +321,13 @@ require_once __DIR__ . '/../layouts/header.php';
 
             <?php if ($mostrarPrazo): ?>
                 <div class="cliente-form-col cliente-col-50">
-                    <label for="prazo_legalizacao_dias" class="block text-sm font-semibold text-gray-700">Prazo de Legalização (dias)</label>
+                    <label for="prazo_acordado_dias" class="block text-sm font-semibold text-gray-700">Prazo Acordado (dias)</label>
                     <input
                         type="number"
-                        id="prazo_legalizacao_dias"
-                        name="prazo_legalizacao_dias"
+                        id="prazo_acordado_dias"
+                        name="prazo_acordado_dias"
                         min="1"
-                        value="<?php echo htmlspecialchars($prazo_legalizacao_dias); ?>"
+                        value="<?php echo htmlspecialchars($prazo_acordado_dias); ?>"
                         class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     >
                 </div>

@@ -149,7 +149,7 @@ $prazoTipoSelecionado = $formData['prazo_tipo'] ?? 'dias';
                             <option
                                 value="<?php echo $cliente['id']; ?>"
                                 data-tipo-assessoria="<?php echo $cliente['tipo_assessoria']; ?>"
-                                data-prazo-legalizacao="<?php echo htmlspecialchars($cliente['prazo_legalizacao_dias'] ?? ''); ?>"
+                                data-prazo-acordado="<?php echo htmlspecialchars($cliente['prazo_acordado_dias'] ?? ''); ?>"
                                 <?php
                                     $isSelected = ($cliente_pre_selecionado_id == $cliente['id']);
                                     echo $isSelected ? 'selected' : '';
@@ -167,7 +167,7 @@ $prazoTipoSelecionado = $formData['prazo_tipo'] ?? 'dias';
                         +
                     </a>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">Prazo de legalização de <span id="prazo-legalizacao-display" class="font-semibold text-gray-700">--</span> dia(s).</p>
+                <p class="text-xs text-gray-500 mt-2">Prazo acordado de <span id="prazo-acordado-display" class="font-semibold text-gray-700">--</span> dia(s).</p>
             </div>
             <div class="md:col-span-3">
                 <label class="block text-sm font-semibold text-gray-700">Serviços Contratados *</label>
@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // === ELEMENTOS DO FORMULÁRIO E VARIÁVEIS GLOBAIS ===
     const clienteSelect = document.getElementById('cliente_id');
     const tipoAssessoriaInput = document.getElementById('cliente_tipo_assessoria');
-    const prazoLegalizacaoDisplay = document.getElementById('prazo-legalizacao-display');
+    const prazoAcordadoDisplay = document.getElementById('prazo-acordado-display');
     const servicosCheckboxes = document.querySelectorAll('.service-checkbox');
     const userPerfil = "<?php echo $_SESSION['user_perfil'] ?? 'colaborador'; ?>";
     const sectionCounters = { tradução: 0, crc: 0, outros: 0 };
@@ -720,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const initialValue = parseInt(prazoDiasInput.value, 10);
         return Number.isNaN(initialValue) ? null : initialValue;
     })();
-    let legalizationDeadlineFromClient = currentDeadlineDays;
+    let agreedDeadlineFromClient = currentDeadlineDays;
 
     function updateFileTileDisplay(input) {
         if (!input) {
@@ -867,13 +867,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Lógica para clientes mensalistas: carrega serviços via API.
     $(clienteSelect).on('change', function() {
         const selectedOption = $(this).find('option:selected');
-        const rawPrazoValue = selectedOption.data('prazo-legalizacao');
+        const rawPrazoValue = selectedOption.data('prazo-acordado');
         const parsedPrazo = Number.parseInt(rawPrazoValue, 10);
-        legalizationDeadlineFromClient = Number.isNaN(parsedPrazo) ? null : parsedPrazo;
-        currentDeadlineDays = legalizationDeadlineFromClient;
+        agreedDeadlineFromClient = Number.isNaN(parsedPrazo) ? null : parsedPrazo;
+        currentDeadlineDays = agreedDeadlineFromClient;
 
-        if (prazoLegalizacaoDisplay) {
-            prazoLegalizacaoDisplay.textContent = legalizationDeadlineFromClient !== null ? legalizationDeadlineFromClient : '--';
+        if (prazoAcordadoDisplay) {
+            prazoAcordadoDisplay.textContent = agreedDeadlineFromClient !== null ? agreedDeadlineFromClient : '--';
         }
 
         if (prazoDiasInput) {
