@@ -29,7 +29,6 @@ class OmieService {
     private ?OmieCategoria $omieCategoriaModel = null;
     private ?OmieContaCorrente $omieContaCorrenteModel = null;
     private ?OmieCenarioFiscal $omieCenarioFiscalModel = null;
-    private ?bool $integrationEnabled = null;
 
     public function __construct(
         Configuracao $configModel,
@@ -47,20 +46,6 @@ class OmieService {
         $this->clienteModel = $clienteModel;
         $this->categoriaModel = $categoriaModel;
         $this->omieProdutoModel = $omieProdutoModel;
-    }
-
-    public function isIntegrationEnabled(): bool
-    {
-        if ($this->integrationEnabled !== null) {
-            return $this->integrationEnabled;
-        }
-
-        $hasKey = is_string($this->appKey) && trim($this->appKey) !== '';
-        $hasSecret = is_string($this->appSecret) && trim($this->appSecret) !== '';
-
-        $this->integrationEnabled = $hasKey && $hasSecret;
-
-        return $this->integrationEnabled;
     }
 
     /**
