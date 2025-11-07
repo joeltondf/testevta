@@ -660,7 +660,7 @@ public function create($data, $files)
     $params = [];
     // Se nenhum filtro de status for aplicado e nenhum card estiver ativo, exclui os orçamentos por padrão.
     if (empty($filters['status']) && empty($filters['filtro_card'])) {
-        $where_clauses[] = "p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado', 'Serviço Pendente', 'Serviço pendente')";
+        $where_clauses[] = "p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Recusado', 'Serviço Pendente', 'Serviço pendente')";
 
     }
 
@@ -790,7 +790,7 @@ public function create($data, $files)
 
         // Garante que a contagem também exclua os orçamentos por padrão.
         if (empty($filters['status']) && empty($filters['filtro_card'])) {
-            $where_clauses[] = "p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Cancelado', 'Recusado', 'Serviço Pendente', 'Serviço pendente')";
+            $where_clauses[] = "p.status_processo NOT IN ('Orçamento', 'Orçamento Pendente', 'Recusado', 'Serviço Pendente', 'Serviço pendente')";
 
         }
 
