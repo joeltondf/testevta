@@ -12,11 +12,6 @@ if (file_exists(__DIR__ . '/Model.php')) {
 class LeadHandoff extends Model
 {
     /**
-     * @var PDO
-     */
-    protected $pdo;
-
-    /**
      * LeadHandoff constructor.
      *
      * @param PDO $pdo Active PDO connection instance.
@@ -24,7 +19,7 @@ class LeadHandoff extends Model
     public function __construct(PDO $pdo)
     {
         try {
-            $this->pdo = $pdo;
+            parent::__construct($pdo);
         } catch (Throwable $exception) {
             error_log('LeadHandoff::__construct error: ' . $exception->getMessage());
             throw $exception;
