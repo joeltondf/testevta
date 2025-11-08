@@ -43,17 +43,14 @@ if ($is_vendedor) {
 
 // --- LÓGICA DE NOTIFICAÇÕES UNIFICADAS ---
 $count_notificacoes = 0;
-$lista_notificacoes_dropdown = [];
 $count_retornos = 0;
 $lista_retornos_dropdown = [];
-$total_alertas = 0;
 $notificationGroup = Notificacao::resolveGroupForProfile($user_perfil);
 
 if (isset($_SESSION['user_id'])) {
     // 1. Conta e busca notificações padrão
     $notificationFeed = $notificacaoModel->getAlertFeed((int)$_SESSION['user_id'], $notificationGroup, 15, true, 'UTC');
     $count_notificacoes = $notificationFeed['total'] ?? 0;
-    $lista_notificacoes_dropdown = $notificationFeed['notifications'] ?? [];
 
     // 2. Conta e busca retornos de prospecção (LÓGICA AJUSTADA)
     // Apenas para perfis de gestão e vendedores
@@ -70,10 +67,6 @@ if (isset($_SESSION['user_id'])) {
             $lista_retornos_dropdown = $prospeccaoModel->getUrgentProspectsForReturn(10, $dias_para_alerta_menu, $status_excluidos, $_SESSION['user_id'], $force_user_filter_profile);
         }
     }
-
-
-    // 3. Soma os totais para o badge
-    $total_alertas = $count_notificacoes + $count_retornos;
 }
 
 // Redirecionamento do dashboard para vendedores
@@ -177,99 +170,98 @@ if ($is_vendedor && $currentPage === 'dashboard.php') {
                 <?php if (in_array($user_perfil, ['admin', 'gerencia', 'supervisor', 'vendedor', 'sdr'])): ?>
 
                 <div class="hidden md:flex items-center space-x-4">
-                    <div class="relative">
-                        <button id="notification-menu-button" class="relative p-1 rounded-full text-gray-500 hover:text-theme-color focus:outline-none">
+                    <?php $markAllDisabled = ($count_notificacoes ?? 0) === 0; ?>
+                    <div
+                        class="notification-bell"
+                        data-component="notification-dropdown"
+                        data-api-url="/api/notifications"
+                        data-mark-read-url="/api/notifications/mark-read"
+                        data-per-page="10"
+                        data-polling-interval="30000"
+                        data-unread-only="1"
+                    >
+                        <button
+                            type="button"
+                            class="notification-trigger"
+                            data-role="trigger"
+                            aria-haspopup="true"
+                            aria-expanded="false"
+                            title="Notificações"
+                        >
                             <i class="fas fa-bell fa-lg"></i>
-                            <?php if ($total_alertas > 0): ?>
-                                <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                                    <?php echo $total_alertas; ?>
-                                </span>
-                            <?php endif; ?>
+                            <span
+                                class="badge"
+                                id="notif-count"
+                                data-role="badge"
+                                <?php echo ($count_notificacoes ?? 0) > 0 ? '' : 'hidden'; ?>
+                            >
+                                <?php echo (int) ($count_notificacoes ?? 0); ?>
+                            </span>
                         </button>
-                        <div id="notification-menu" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-20 hidden">
-                            <div class="px-4 py-2 text-sm text-gray-700 font-bold border-b">
-                                Orçamentos e Processos
+                        <div
+                            class="dropdown"
+                            id="notif-dropdown"
+                            data-role="dropdown"
+                            style="display:none"
+                            aria-hidden="true"
+                        >
+                            <div class="notification-dropdown__header">
+                                <span>Notificações</span>
+                                <button
+                                    type="button"
+                                    data-action="mark-all"
+                                    class="<?php echo $markAllDisabled ? 'is-disabled' : ''; ?>"
+                                    <?php echo $markAllDisabled ? 'disabled' : ''; ?>
+                                >
+                                    Marcar todas como lidas
+                                </button>
                             </div>
-                            <?php if (empty($lista_notificacoes_dropdown)): ?>
-                                <div class="px-4 py-3 text-sm text-center text-gray-500">Nenhuma notificação.</div>
-                            <?php else: ?>
-                                <?php 
-                                function get_notification_style($message) {
-                                    $message = strtolower($message);
-                                    if (strpos($message, 'aprovado') !== false) return 'bg-green-50 hover:bg-green-100';
-                                    if (strpos($message, 'recusado') !== false) return 'bg-red-50 hover:bg-red-100';
-                                    if (strpos($message, 'novo') !== false || strpos($message, 'pendente') !== false) return 'bg-blue-50 hover:bg-blue-100';
-                                    return 'hover:bg-gray-50';
-                                }
-                                ?>
-                                <?php foreach ($lista_notificacoes_dropdown as $notificacao): ?>
-                                    <?php
-                                    $style = get_notification_style($notificacao['mensagem']);
-                                    $is_unread = !$notificacao['lida'];
-                                    $link_href = '#';
-                                    if (!empty($notificacao['link']) && $notificacao['link'] !== '#') {
-                                        $link_href = preg_match('/^https?:\/\//i', $notificacao['link'])
-                                            ? $notificacao['link']
-                                            : APP_URL . $notificacao['link'];
-                                    }
-                                    ?>
-                                    <div class="border-b border-gray-100 last:border-b-0">
-                                        <div class="flex items-center justify-between px-4 py-3 <?php echo $style; ?>">
-                                            <a href="<?php echo htmlspecialchars($link_href); ?>" class="flex-grow truncate">
-                                                <p class="text-sm text-gray-800 <?php echo $is_unread ? 'font-bold' : ''; ?>">
-                                                    <?php echo htmlspecialchars($notificacao['mensagem']); ?>
-                                                </p>
-                                                <p class="text-xs text-gray-500 mt-1">
-                                                    <?php echo htmlspecialchars($notificacao['display_date'] ?? ''); ?>
-                                                </p>
-                                            </a>
-                                            <a href="<?php echo APP_URL; ?>/dashboard.php?action=mark_notification_read&id=<?php echo $notificacao['id']; ?>"
-                                               class="ml-4 flex-shrink-0 p-2 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600"
-                                               onclick="return confirm('Deseja marcar esta notificação como lida?');"
-                                               title="Marcar como lida">
-                                                <i class="fas fa-times fa-sm"></i>
-                                            </a>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                                <div class="border-t">
-                                    <a href="<?php echo APP_URL; ?>/notificacoes.php" class="block px-4 py-2 text-sm text-center text-blue-600 font-semibold hover:bg-gray-100">
-                                        Ver todas as notificações
-                                    </a>
-                                </div>
+                            <div class="notification-dropdown__list" data-role="notification-list">
+                                <div class="notification-dropdown__status">Carregando notificações...</div>
+                            </div>
+                            <div class="notification-dropdown__footer">
+                                <a href="<?php echo APP_URL; ?>/notificacoes.php">Ver todas as notificações</a>
+                            </div>
                             <?php if (in_array($user_perfil, ['gerencia', 'supervisor', 'vendedor'])): ?>
-                                <div class="px-4 py-2 text-sm text-gray-700 font-bold border-b border-t">
-                                    Prospecções para Retorno
+                                <div class="notification-dropdown__section-divider"></div>
+                                <div class="notification-dropdown__section-header">
+                                    <span>Prospecções para Retorno</span>
+                                    <?php if (($count_retornos ?? 0) > 0): ?>
+                                        <span class="text-xs text-gray-500"><?php echo (int) $count_retornos; ?> pendentes</span>
+                                    <?php endif; ?>
                                 </div>
                                 <?php if (empty($lista_retornos_dropdown)): ?>
-                                    <div class="px-4 py-3 text-sm text-center text-gray-500">Nenhuma prospecção para retorno.</div>
+                                    <div class="notification-dropdown__section-empty">Nenhuma prospecção para retorno.</div>
                                 <?php else: ?>
-                                    <?php foreach ($lista_retornos_dropdown as $retorno): ?>
-                                        <div class="border-b border-gray-100 last:border-b-0">
-                                            <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                                                <a href="<?php echo APP_URL; ?>/crm/prospeccoes/detalhes.php?id=<?php echo $retorno['id']; ?>" class="flex-grow truncate">
-                                                    <p class="font-semibold truncate text-sm text-gray-800"><?php echo htmlspecialchars($retorno['nome_prospecto']); ?></p>
-                                                    <p class="text-xs text-red-600 font-semibold mt-1"><?php echo $retorno['dias_sem_contato']; ?> dias sem contato</p>
+                                    <div class="notification-dropdown__section-list">
+                                        <?php foreach ($lista_retornos_dropdown as $retorno): ?>
+                                            <div class="notification-dropdown__section-item">
+                                                <a
+                                                    href="<?php echo APP_URL; ?>/crm/prospeccoes/detalhes.php?id=<?php echo (int) $retorno['id']; ?>"
+                                                    class="section-item__link"
+                                                >
+                                                    <p class="section-item__name"><?php echo htmlspecialchars($retorno['nome_prospecto']); ?></p>
+                                                    <p class="section-item__meta"><?php echo (int) $retorno['dias_sem_contato']; ?> dias sem contato</p>
                                                 </a>
-                                                <button onclick="dismissProspectAlert(this, <?php echo $retorno['id']; ?>)" 
-                                                   class="ml-4 flex-shrink-0 p-2 rounded-full text-gray-400 hover:bg-yellow-100 hover:text-yellow-600"
-                                                   title="Pausar alerta de prospecção">
-                                                    <i class="fas fa-pause fa-sm"></i>
+                                                <button
+                                                    type="button"
+                                                    onclick="dismissProspectAlert(this, <?php echo (int) $retorno['id']; ?>)"
+                                                    title="Pausar alerta de prospecção"
+                                                >
+                                                    <i class="fas fa-pause"></i>
                                                 </button>
                                             </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
-                                <div class="border-t">
-                                    <a href="<?php echo APP_URL; ?>/crm/prospeccoes/retornos.php" class="block px-4 py-2 text-sm text-center text-blue-600 font-semibold hover:bg-gray-100">
-                                        Ver todos os retornos
-                                    </a>
+                                <div class="notification-dropdown__footer">
+                                    <a href="<?php echo APP_URL; ?>/crm/prospeccoes/retornos.php">Ver todos os retornos</a>
                                 </div>
                             <?php endif; ?>
                         </div>
                     </div>
-                    
+                </div>
+
 
                     <span class="text-gray-300">|</span>
                     <?php endif; ?>
@@ -337,35 +329,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const crmMenu = document.getElementById('crm-menu');
     const financeMenuButton = document.getElementById('finance-menu-button');
     const financeMenu = document.getElementById('finance-menu');
-    const notificationMenuButton = document.getElementById('notification-menu-button');
-    const notificationMenu = document.getElementById('notification-menu');
 
-    function setupDropdown(button, menu) {
-        if (!button || !menu) return;
-        
+    const dropdowns = [
+        { button: crmMenuButton, menu: crmMenu },
+        { button: financeMenuButton, menu: financeMenu },
+    ];
+
+    dropdowns.forEach(({ button, menu }) => {
+        if (!button || !menu) {
+            return;
+        }
+
         button.addEventListener('click', function (event) {
             event.stopPropagation();
-            [crmMenu, financeMenu, notificationMenu].forEach(otherMenu => {
+            dropdowns.forEach(({ menu: otherMenu }) => {
                 if (otherMenu && otherMenu !== menu) {
                     otherMenu.classList.add('hidden');
                 }
             });
             menu.classList.toggle('hidden');
         });
-    }
-
-    setupDropdown(crmMenuButton, crmMenu);
-    setupDropdown(financeMenuButton, financeMenu);
-    setupDropdown(notificationMenuButton, notificationMenu);
+    });
 
     window.addEventListener('click', function (event) {
-        [crmMenu, financeMenu, notificationMenu].forEach(menu => {
+        dropdowns.forEach(({ button, menu }) => {
             if (menu && !menu.classList.contains('hidden')) {
-                let button = null;
-                if (menu === crmMenu) button = crmMenuButton;
-                if (menu === financeMenu) button = financeMenuButton;
-                if (menu === notificationMenu) button = notificationMenuButton;
-
                 if (!menu.contains(event.target) && (button && !button.contains(event.target))) {
                     menu.classList.add('hidden');
                 }
