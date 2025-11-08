@@ -34,9 +34,26 @@
     const rejectModalClose = document.getElementById('rejectModalClose');
     const rejectModalCancel = document.getElementById('rejectModalCancel');
 
+    const feedbackModal = typeof window.FeedbackModal === 'function'
+        ? new window.FeedbackModal('feedbackModal')
+        : null;
     const countdownIntervals = new Map();
     let activeTab = 'pending';
     let leadPendingAction = null;
+
+    function normalizeBoolean(value) {
+        if (typeof value === 'boolean') {
+            return value;
+        }
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            return ['true', '1', 'sim', 'yes', 'on'].includes(normalized);
+        }
+        return false;
+    }
 
     function getEndpoint(tab) {
         return apiEndpoints[tab] || apiEndpoints.pending;
@@ -169,6 +186,7 @@
         const newBadge = card.querySelector('.lead-badge.new');
         const countdownEl = card.querySelector('[data-countdown]');
         const leadExtra = card.querySelector('.lead-extra');
+        const feedbackButton = card.querySelector('[data-action="feedback"]');
 
         const leadName = lead.nome || lead.nome_prospecto || lead.contact_name || 'Lead sem nome';
         const company = lead.empresa || lead.company || lead.organization || '';
@@ -238,7 +256,80 @@
             openExternalLink(lead.timeline_url || lead.links?.timeline);
         });
 
+        if (feedbackButton) {
+            const shouldDisplayFeedback = determineFeedbackEligibility(lead);
+            if (shouldDisplayFeedback && feedbackModal) {
+                feedbackButton.hidden = false;
+                feedbackButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    feedbackModal.open(lead.id, { leadName: labelName });
+                });
+            } else {
+                feedbackButton.remove();
+            }
+        }
+
         return card;
+    }
+
+    function determineFeedbackEligibility(lead) {
+        if (!lead) {
+            return false;
+        }
+
+        const scoreFields = [
+            lead.quality_score,
+            lead.feedback_score,
+            lead.qualidade,
+            lead.feedback?.score,
+        ];
+
+        const hasScore = scoreFields.some((value) => {
+            const numericValue = Number(value);
+            return !Number.isNaN(numericValue) && numericValue > 0;
+        });
+
+        if (hasScore) {
+            return false;
+        }
+
+        if (lead.feedback_available !== undefined) {
+            return normalizeBoolean(lead.feedback_available);
+        }
+
+        if (lead.feedback_due !== undefined) {
+            return normalizeBoolean(lead.feedback_due);
+        }
+
+        if (lead.feedback_requested !== undefined) {
+            return normalizeBoolean(lead.feedback_requested);
+        }
+
+        const status = String(lead.status || lead.handoff_status || '').toLowerCase();
+        if (['converted', 'won', 'lost', 'perdido'].includes(status)) {
+            return true;
+        }
+
+        const now = Date.now();
+        const dueAt = lead.feedback_due_at || lead.feedback_deadline;
+        if (dueAt) {
+            const dueDate = new Date(dueAt);
+            if (!Number.isNaN(dueDate.getTime()) && dueDate.getTime() <= now) {
+                return true;
+            }
+        }
+
+        const acceptedAt = lead.accepted_at || lead.feedback_reference_date || lead.updated_at;
+        if (acceptedAt) {
+            const acceptedDate = new Date(acceptedAt);
+            if (!Number.isNaN(acceptedDate.getTime())) {
+                const diffMs = now - acceptedDate.getTime();
+                const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                return diffDays >= 7;
+            }
+        }
+
+        return false;
     }
 
     function openExternalLink(url) {
@@ -421,6 +512,12 @@
             toast.classList.remove('visible');
             window.setTimeout(() => toast.remove(), 300);
         }, 3500);
+    }
+
+    if (feedbackModal) {
+        feedbackModal.setOnSubmitted(() => {
+            loadLeads(activeTab);
+        });
     }
 
     tabButtons.forEach((button) => {

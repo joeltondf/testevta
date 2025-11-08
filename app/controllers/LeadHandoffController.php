@@ -438,7 +438,7 @@ class LeadHandoffController
 
             $handoffId = $this->filterInt($payload['handoff_id'] ?? null);
             $qualityScore = $this->filterInt($payload['quality_score'] ?? null);
-            $feedbackText = $this->sanitizeString($payload['feedback_text'] ?? '');
+            $comments = $this->sanitizeString($payload['comments'] ?? ($payload['feedback_text'] ?? ''));
 
             if ($handoffId <= 0 || $qualityScore < 1 || $qualityScore > 5) {
                 http_response_code(422);
@@ -460,7 +460,22 @@ class LeadHandoffController
                 return;
             }
 
-            if (!$this->leadHandoffModel->addFeedback($handoffId, $currentUserId, $qualityScore, $feedbackText)) {
+            $checkboxKeys = ['info_correct', 'icp_match', 'engaged', 'expectations'];
+            $feedbackPayload = [
+                'version' => 1,
+                'comments' => $comments,
+            ];
+
+            foreach ($checkboxKeys as $key) {
+                $feedbackPayload[$key] = $this->normalizeFeedbackBoolean($payload[$key] ?? false);
+            }
+
+            $feedbackJson = json_encode($feedbackPayload, JSON_UNESCAPED_UNICODE);
+            if ($feedbackJson === false) {
+                $feedbackJson = $comments;
+            }
+
+            if (!$this->leadHandoffModel->addFeedback($handoffId, $currentUserId, $qualityScore, $feedbackJson)) {
                 http_response_code(500);
                 echo json_encode(['success' => false, 'message' => 'Não foi possível registrar o feedback.'], JSON_UNESCAPED_UNICODE);
                 return;
@@ -669,6 +684,24 @@ class LeadHandoffController
         }
 
         return (int) filter_var($value, FILTER_VALIDATE_INT, ['options' => ['default' => 0]]);
+    }
+
+    private function normalizeFeedbackBoolean($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = mb_strtolower(trim($value));
+            return in_array($normalized, ['1', 'true', 'sim', 'yes', 'on'], true);
+        }
+
+        return false;
     }
 
     /**

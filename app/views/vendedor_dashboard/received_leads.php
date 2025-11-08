@@ -135,10 +135,57 @@ $baseAppUrl = rtrim(APP_URL, '/');
                 <button class="button-primary" data-action="accept">Aceitar</button>
                 <button class="button-danger" data-action="reject">Rejeitar</button>
                 <button class="button-outline" data-action="chat">Ver Chat</button>
+                <button class="button-outline" data-action="feedback" hidden>Dar Feedback</button>
                 <button class="button-outline" data-action="timeline">Timeline</button>
             </div>
         </footer>
     </article>
 </template>
 
+<div class="modal-backdrop" id="feedbackModal" aria-hidden="true">
+    <div class="modal-overlay" data-feedback-overlay></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="feedbackModalTitle">
+        <button type="button" class="modal-close" data-feedback-close aria-label="Fechar">
+            <i class="fas fa-times"></i>
+        </button>
+        <h3 id="feedbackModalTitle">Avaliar Qualificação do Lead</h3>
+        <p class="modal-subtitle" data-feedback-lead hidden></p>
+        <form id="feedbackForm" novalidate>
+            <div class="rating">
+                <label for="feedbackRating">Qualidade da Qualificação:</label>
+                <div class="stars" id="feedbackRating" role="radiogroup" aria-label="Pontuação de 1 a 5 estrelas">
+                    <i class="far fa-star" data-rating="1" tabindex="0" aria-label="1 estrela"></i>
+                    <i class="far fa-star" data-rating="2" tabindex="0" aria-label="2 estrelas"></i>
+                    <i class="far fa-star" data-rating="3" tabindex="0" aria-label="3 estrelas"></i>
+                    <i class="far fa-star" data-rating="4" tabindex="0" aria-label="4 estrelas"></i>
+                    <i class="far fa-star" data-rating="5" tabindex="0" aria-label="5 estrelas"></i>
+                </div>
+            </div>
+
+            <div class="checkboxes">
+                <label><input type="checkbox" name="info_correct"> Informações corretas</label>
+                <label><input type="checkbox" name="icp_match"> Lead no perfil (ICP)</label>
+                <label><input type="checkbox" name="engaged"> Lead engajado</label>
+                <label><input type="checkbox" name="expectations"> Expectativas alinhadas</label>
+            </div>
+
+            <textarea name="comments" placeholder="Comentários adicionais..." rows="4"></textarea>
+
+            <p class="modal-error" data-feedback-error hidden></p>
+            <div class="modal-success" data-feedback-thank-you hidden>Obrigado pelo feedback! Ele ajuda nosso time a qualificar leads ainda melhores.</div>
+
+            <div class="modal-actions">
+                <button type="button" class="button-secondary" data-feedback-close>Cancelar</button>
+                <button type="submit" class="button-primary">
+                    <span class="btn-text">Enviar Feedback</span>
+                    <span class="btn-spinner" hidden>
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="<?php echo $baseAppUrl; ?>/assets/js/components/feedback-modal.js" defer></script>
 <script src="<?php echo $baseAppUrl; ?>/assets/js/vendor-dashboard.js" defer></script>
