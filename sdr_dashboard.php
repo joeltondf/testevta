@@ -16,6 +16,8 @@ if ($action === 'update_lead_status') {
     $controller->listarLeads();
 } elseif ($action === 'update_columns') {
     $controller->updateKanbanColumns();
+} elseif ($action === 'my_feedbacks') {
+    $controller->myFeedbacks();
 } elseif ($action === 'create_lead') {
     $controller->createLead();
 } else {

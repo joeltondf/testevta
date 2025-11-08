@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/Prospeccao.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/LeadHandoff.php';
 require_once __DIR__ . '/../services/SdrKanbanConfigService.php';
 
 class SdrDashboardController
@@ -9,6 +10,7 @@ class SdrDashboardController
     private $pdo;
     private $prospectionModel;
     private $userModel;
+    private LeadHandoff $leadHandoffModel;
     private SdrKanbanConfigService $kanbanConfigService;
 
     public function __construct($pdo)
@@ -16,6 +18,7 @@ class SdrDashboardController
         $this->pdo = $pdo;
         $this->prospectionModel = new Prospeccao($pdo);
         $this->userModel = new User($pdo);
+        $this->leadHandoffModel = new LeadHandoff($pdo);
         $this->kanbanConfigService = new SdrKanbanConfigService($pdo);
     }
 
@@ -87,6 +90,135 @@ class SdrDashboardController
 
         require_once __DIR__ . '/../views/layouts/header.php';
         require_once __DIR__ . '/../views/sdr_dashboard/main.php';
+        require_once __DIR__ . '/../views/layouts/footer.php';
+    }
+
+    public function myFeedbacks(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userProfile = $_SESSION['user_perfil'] ?? '';
+
+        if ($userId <= 0 || $userProfile !== 'sdr') {
+            header('Location: ' . APP_URL . '/dashboard.php');
+            exit();
+        }
+
+        $feedbackRecords = $this->leadHandoffModel->getFeedbackForSdr($userId);
+        $totalFeedbacks = count($feedbackRecords);
+        $scoreSum = 0;
+        $scoreDistribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+
+        $flagLabels = [
+            'info_correct' => 'Informações corretas',
+            'icp_match' => 'Lead no perfil (ICP)',
+            'engaged' => 'Lead engajado',
+            'expectations' => 'Expectativas alinhadas',
+        ];
+
+        $flagCounts = array_fill_keys(array_keys($flagLabels), 0);
+        $recentFeedbacks = [];
+
+        foreach ($feedbackRecords as $record) {
+            $score = (int) ($record['quality_score'] ?? 0);
+            if ($score >= 1 && $score <= 5) {
+                $scoreDistribution[$score]++;
+                $scoreSum += $score;
+            }
+
+            $rawFeedback = $record['vendor_feedback'] ?? '';
+            $decodedFeedback = null;
+            if (is_string($rawFeedback) && $rawFeedback !== '') {
+                $decoded = json_decode($rawFeedback, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $decodedFeedback = $decoded;
+                }
+            }
+
+            $comment = '';
+            if (is_array($decodedFeedback) && array_key_exists('comments', $decodedFeedback)) {
+                $comment = (string) $decodedFeedback['comments'];
+            } elseif (is_string($rawFeedback)) {
+                $comment = (string) $rawFeedback;
+            }
+            $comment = trim($comment);
+
+            $flags = [];
+            foreach ($flagLabels as $key => $label) {
+                $flagValue = false;
+                if (is_array($decodedFeedback)) {
+                    if (array_key_exists($key, $decodedFeedback)) {
+                        $flagValue = $decodedFeedback[$key];
+                    } elseif (isset($decodedFeedback['flags']) && is_array($decodedFeedback['flags']) && array_key_exists($key, $decodedFeedback['flags'])) {
+                        $flagValue = $decodedFeedback['flags'][$key];
+                    }
+                }
+
+                $flagBool = $this->normalizeFeedbackFlag($flagValue);
+                $flags[$key] = $flagBool;
+                if ($flagBool) {
+                    $flagCounts[$key]++;
+                }
+            }
+
+            $recentFeedbacks[] = [
+                'id' => (int) ($record['id'] ?? 0),
+                'lead_name' => $record['nome_prospecto'] ?? 'Lead',
+                'vendor_name' => $record['vendor_name'] ?? 'Vendedor',
+                'score' => $score,
+                'comments' => $comment,
+                'flags' => $flags,
+                'submitted_at' => $record['updated_at'] ?? $record['accepted_at'] ?? $record['created_at'] ?? null,
+            ];
+        }
+
+        usort($recentFeedbacks, static function (array $a, array $b): int {
+            $timeA = isset($a['submitted_at']) ? strtotime((string) $a['submitted_at']) : false;
+            $timeB = isset($b['submitted_at']) ? strtotime((string) $b['submitted_at']) : false;
+
+            $timeA = $timeA !== false ? $timeA : PHP_INT_MIN;
+            $timeB = $timeB !== false ? $timeB : PHP_INT_MIN;
+
+            return $timeB <=> $timeA;
+        });
+
+        $recentFeedbacks = array_slice($recentFeedbacks, 0, 10);
+        $averageScore = $totalFeedbacks > 0 ? round($scoreSum / $totalFeedbacks, 2) : null;
+
+        $scoreDistributionPercent = [];
+        foreach ($scoreDistribution as $score => $count) {
+            $scoreDistributionPercent[$score] = $totalFeedbacks > 0
+                ? round(($count / $totalFeedbacks) * 100)
+                : 0;
+        }
+
+        $flagPercentages = [];
+        foreach ($flagCounts as $key => $count) {
+            $flagPercentages[$key] = $totalFeedbacks > 0
+                ? round(($count / $totalFeedbacks) * 100)
+                : 0;
+        }
+
+        $feedbackSummary = [
+            'total' => $totalFeedbacks,
+            'average' => $averageScore,
+            'score_distribution' => $scoreDistribution,
+            'score_distribution_percent' => $scoreDistributionPercent,
+        ];
+
+        $feedbackPatterns = [
+            'labels' => $flagLabels,
+            'counts' => $flagCounts,
+            'percentages' => $flagPercentages,
+        ];
+
+        $pageTitle = 'Feedbacks Recebidos';
+
+        require_once __DIR__ . '/../views/layouts/header.php';
+        require_once __DIR__ . '/../views/sdr_dashboard/my_feedbacks.php';
         require_once __DIR__ . '/../views/layouts/footer.php';
     }
 
@@ -479,5 +611,23 @@ class SdrDashboardController
             'agendamentosRealizados' => $appointments,
             'taxaAgendamento' => $rate
         ];
+    }
+
+    private function normalizeFeedbackFlag($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = mb_strtolower(trim($value));
+            return in_array($normalized, ['1', 'true', 'sim', 'yes', 'on'], true);
+        }
+
+        return false;
     }
 }

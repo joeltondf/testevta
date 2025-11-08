@@ -379,6 +379,51 @@ class LeadHandoff extends Model
     }
 
     /**
+     * Retrieves all feedback records associated with an SDR.
+     *
+     * @param int $sdrId Identifier of the SDR.
+     *
+     * @return array
+     */
+    public function getFeedbackForSdr(int $sdrId): array
+    {
+        $results = [];
+
+        try {
+            if ($sdrId <= 0) {
+                throw new InvalidArgumentException('Invalid SDR identifier provided.');
+            }
+
+            $sql = "SELECT
+                        lh.id,
+                        lh.prospeccao_id,
+                        lh.quality_score,
+                        lh.vendor_feedback,
+                        lh.updated_at,
+                        lh.created_at,
+                        lh.accepted_at,
+                        vendor.nome_completo AS vendor_name,
+                        p.nome_prospecto
+                    FROM lead_handoffs lh
+                    LEFT JOIN users vendor ON vendor.id = lh.vendor_id
+                    LEFT JOIN prospeccoes p ON p.id = lh.prospeccao_id
+                    WHERE lh.sdr_id = :sdr_id
+                      AND lh.quality_score IS NOT NULL
+                    ORDER BY lh.updated_at DESC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':sdr_id', $sdrId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $exception) {
+            error_log('LeadHandoff::getFeedbackForSdr error: ' . $exception->getMessage());
+        }
+
+        return $results;
+    }
+
+    /**
      * Retrieves handoffs assigned to a specific SDR optionally filtered by status.
      *
      * @param int         $sdrId  Identifier of the SDR.
