@@ -131,6 +131,9 @@ switch ($action) {
     case 'automacao_settings':
         $adminController->showAutomacaoSettings();
         break;
+    case 'digisac_integration':
+        $adminController->showDigisacIntegration();
+        break;
     case 'save_automacao_settings':
         $adminController->saveAutomacaoSettings();
         break;

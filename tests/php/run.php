@@ -8,6 +8,7 @@ if (file_exists($autoloadPath)) {
 }
 require_once __DIR__ . '/../../app/models/Cliente.php';
 require_once __DIR__ . '/../../app/utils/OmiePayloadBuilder.php';
+require_once __DIR__ . '/../../app/services/DigisacService.php';
 
 $tests = [];
 
@@ -176,6 +177,110 @@ runTest('Cliente::create persiste DDI quando coluna existe', function (): void {
     assertEquals('55', $row['telefone_ddi']);
     assertEquals('11', $row['telefone_ddd']);
     assertEquals('987654321', $row['telefone_numero']);
+}, $tests);
+
+class TestDigisacService extends DigisacService
+{
+    public array $requests = [];
+
+    protected function performMessageRequest(array $payload): array
+    {
+        $this->requests[] = $payload;
+
+        return ['success' => true, 'message_id' => 'msg_test'];
+    }
+}
+
+runTest('DigisacService::formatPhoneNumber normaliza número nacional', function (): void {
+    $pdo = new PDO('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('CREATE TABLE configuracoes (chave TEXT PRIMARY KEY, valor TEXT NULL)');
+    $pdo->exec('CREATE TABLE digisac_messages_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        phone_number TEXT,
+        message_type TEXT,
+        message_text TEXT,
+        prospeccao_id INTEGER NULL,
+        digisac_message_id TEXT NULL,
+        status TEXT,
+        created_at TEXT,
+        delivered_at TEXT NULL,
+        read_at TEXT NULL
+    )');
+    $pdo->prepare('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)')->execute(['digisac_enabled', '1']);
+    $pdo->prepare('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)')->execute(['digisac_api_token', 'token']);
+
+    $service = new DigisacService($pdo);
+    $formatted = $service->formatPhoneNumber('(11) 98765-4321');
+    assertEquals('+5511987654321', $formatted);
+}, $tests);
+
+runTest('DigisacService::sendMessage registra log de envio bem sucedido', function (): void {
+    $pdo = new PDO('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('CREATE TABLE configuracoes (chave TEXT PRIMARY KEY, valor TEXT NULL)');
+    $pdo->exec('CREATE TABLE digisac_messages_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        phone_number TEXT,
+        message_type TEXT,
+        message_text TEXT,
+        prospeccao_id INTEGER NULL,
+        digisac_message_id TEXT NULL,
+        status TEXT,
+        created_at TEXT,
+        delivered_at TEXT NULL,
+        read_at TEXT NULL
+    )');
+
+    $insert = $pdo->prepare('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)');
+    $insert->execute(['digisac_enabled', '1']);
+    $insert->execute(['digisac_api_token', 'token']);
+
+    $service = new TestDigisacService($pdo);
+    $result = $service->sendMessage('11 91234-5678', 'Teste rápido', null, [
+        'user_id' => 5,
+        'message_type' => 'unit_test',
+        'prospeccao_id' => 9,
+    ]);
+
+    assertEquals(true, $result['success']);
+    assertEquals('msg_test', $result['message_id']);
+    assertEquals(1, count($service->requests));
+    assertEquals('+5511912345678', $service->requests[0]['number']);
+
+    $logRow = $pdo->query('SELECT phone_number, message_type, status, digisac_message_id FROM digisac_messages_log')->fetch(PDO::FETCH_ASSOC);
+    assertEquals('+5511912345678', $logRow['phone_number']);
+    assertEquals('unit_test', $logRow['message_type']);
+    assertEquals('sent', $logRow['status']);
+    assertEquals('msg_test', $logRow['digisac_message_id']);
+}, $tests);
+
+runTest('DigisacService::sendMessage falha quando integração está desativada', function (): void {
+    $pdo = new PDO('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('CREATE TABLE configuracoes (chave TEXT PRIMARY KEY, valor TEXT NULL)');
+    $pdo->exec('CREATE TABLE digisac_messages_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        phone_number TEXT,
+        message_type TEXT,
+        message_text TEXT,
+        prospeccao_id INTEGER NULL,
+        digisac_message_id TEXT NULL,
+        status TEXT,
+        created_at TEXT,
+        delivered_at TEXT NULL,
+        read_at TEXT NULL
+    )');
+
+    $pdo->prepare('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)')->execute(['digisac_enabled', '0']);
+
+    $service = new TestDigisacService($pdo);
+    $result = $service->sendMessage('11 99999-0000', 'Mensagem', null);
+
+    assertEquals(false, $result['success']);
 }, $tests);
 
 foreach ($tests as $test) {

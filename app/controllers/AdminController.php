@@ -905,6 +905,15 @@ public function saveConfiguracoes()
         require_once __DIR__ . '/../views/admin/automacao_settings.php';
     }
 
+    public function showDigisacIntegration(): void
+    {
+        $settings = $this->configModel->getAll();
+        $pageTitle = 'Integração Digisac';
+        require_once __DIR__ . '/../views/layouts/header.php';
+        require_once __DIR__ . '/../views/admin/integrations/digisac.php';
+        require_once __DIR__ . '/../views/layouts/footer.php';
+    }
+
     /**
      * Salva as configurações da API de automação.
      */
