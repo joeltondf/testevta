@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/DigisacService.php';
+
 if (file_exists(__DIR__ . '/../models/Model.php')) {
     require_once __DIR__ . '/../models/Model.php';
 }
@@ -22,6 +24,8 @@ class NotificationService
      * @var array<int, array{id:int,nome_completo:string|null,perfil:string|null}|false>
      */
     private static array $userCache = [];
+
+    private static ?DigisacService $digisacService = null;
 
     /**
      * Creates a notification indicating that a lead has been transferred to a vendor.
@@ -50,7 +54,7 @@ class NotificationService
             $message = sprintf('🔔 Novo lead %s: %s', $formattedUrgency, $prospectName);
             $link = self::buildProspectionLink($prospectionId);
 
-            return self::createNotification([
+            $notificationId = self::createNotification([
                 'usuario_id' => $vendorId,
                 'remetente_id' => $sdrId,
                 'tipo_alerta' => 'lead_received',
@@ -60,6 +64,24 @@ class NotificationService
                 'link' => $link,
                 'priority' => $priority,
             ]);
+
+            if ($notificationId !== false && $urgency === 'alta') {
+                $digisacService = self::getDigisacService();
+                if ($digisacService instanceof DigisacService) {
+                    try {
+                        $digisacService->sendUrgentLeadNotification($vendorId, [
+                            'nome_prospecto' => $prospectName,
+                            'empresa' => $data['empresa'] ?? ($data['company'] ?? ''),
+                            'sdr_name' => $data['sdr_name'] ?? ($data['sdr'] ?? self::getUserName($sdrId) ?? ''),
+                            'id' => $prospectionId,
+                        ]);
+                    } catch (Throwable $exception) {
+                        error_log('NotificationService::notifyLeadTransferred Digisac error: ' . $exception->getMessage());
+                    }
+                }
+            }
+
+            return $notificationId;
         } catch (Throwable $exception) {
             error_log('NotificationService::notifyLeadTransferred error: ' . $exception->getMessage());
 
@@ -668,6 +690,27 @@ class NotificationService
         }
 
         return null;
+    }
+
+    private static function getDigisacService(): ?DigisacService
+    {
+        if (self::$digisacService instanceof DigisacService) {
+            return self::$digisacService;
+        }
+
+        $pdo = self::getPDO();
+        if (!$pdo instanceof PDO) {
+            return null;
+        }
+
+        try {
+            self::$digisacService = new DigisacService($pdo);
+        } catch (Throwable $exception) {
+            error_log('NotificationService::getDigisacService error: ' . $exception->getMessage());
+            self::$digisacService = null;
+        }
+
+        return self::$digisacService;
     }
 
     /**
