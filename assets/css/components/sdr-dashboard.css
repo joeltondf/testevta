@@ -1,0 +1,185 @@
+.sdr-summary-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -15px rgba(15, 23, 42, 0.25);
+    border: 1px solid #e5e7eb;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sdr-summary-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.sdr-summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.sdr-dashboard-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.85);
+    z-index: 10;
+}
+
+.sdr-dashboard-loading.is-visible {
+    display: flex;
+}
+
+.sdr-dashboard-loading .loader {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    border: 3px solid rgba(59, 130, 246, 0.25);
+    border-top-color: rgba(59, 130, 246, 1);
+    animation: sdr-spin 1s linear infinite;
+}
+
+@keyframes sdr-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sdr-dashboard-error {
+    margin: 1rem 1.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.sdr-dashboard-table tbody tr {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.sdr-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sdr-status--pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.sdr-status--accepted {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.sdr-status--converted {
+    background-color: #dcfce7;
+    color: #047857;
+}
+
+.sdr-status--lost {
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+
+.sdr-status-badge {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+}
+
+.sdr-status-badge--pending {
+    background-color: #fbbf24;
+}
+
+.sdr-status-badge--accepted {
+    background-color: #60a5fa;
+}
+
+.sdr-status-badge--converted {
+    background-color: #34d399;
+}
+
+.sdr-status-badge--lost {
+    background-color: #9ca3af;
+}
+
+.sdr-dashboard-table td[data-label="Ações"] .disabled,
+button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .sdr-dashboard-table,
+    .sdr-dashboard-table thead,
+    .sdr-dashboard-table tbody,
+    .sdr-dashboard-table th,
+    .sdr-dashboard-table td,
+    .sdr-dashboard-table tr {
+        display: block;
+        width: 100%;
+    }
+
+    .sdr-dashboard-table thead {
+        display: none;
+    }
+
+    .sdr-dashboard-table tbody tr {
+        margin: 0 1rem 1.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        padding: 1rem;
+        background-color: #ffffff;
+        box-shadow: 0 10px 15px -10px rgba(15, 23, 42, 0.2);
+    }
+
+    .sdr-dashboard-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .sdr-dashboard-table td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border: none;
+        position: relative;
+    }
+
+    .sdr-dashboard-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #6b7280;
+        margin-right: 1rem;
+        flex: 0 0 45%;
+    }
+
+    .sdr-dashboard-table td[data-label="Ações"] {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .sdr-dashboard-table td[data-label="Ações"]::before {
+        margin-bottom: 0.5rem;
+    }
+}
