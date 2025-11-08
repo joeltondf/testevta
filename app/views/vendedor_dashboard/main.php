@@ -101,6 +101,10 @@ $nextLead = $nextLead ?? null;
     </div>
 </div>
 
+<div class="mb-10">
+    <?php require __DIR__ . '/received_leads.php'; ?>
+</div>
+
 <div class="mb-8">
     <h2 class="text-lg font-semibold text-gray-700 mb-3">Resumo de Performance</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
