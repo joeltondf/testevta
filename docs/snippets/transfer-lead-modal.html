@@ -1,0 +1,98 @@
+<!-- Modal de Transferência de Lead -->
+<div id="transferLeadModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="transferModal.close()"></div>
+    <div class="modal-container" role="document">
+        <div class="modal-header">
+            <h3>Transferir Lead para Vendedor</h3>
+            <button class="modal-close" onclick="transferModal.close()" aria-label="Fechar modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="transferLeadForm" novalidate>
+                <input type="hidden" id="transfer_prospeccao_id">
+                <div class="form-group">
+                    <label>Lead: <span id="transfer_prospeccao_nome"></span></label>
+                </div>
+
+                <div class="form-group">
+                    <label for="vendor_id">Vendedor *</label>
+                    <select id="vendor_id" name="vendor_id" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                    <span class="field-error" id="vendor_error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label>Urgência *</label>
+                    <div class="radio-group">
+                        <label class="radio-urgency alta">
+                            <input type="radio" name="urgency" value="alta" required>
+                            <span>🔴 Alta (SLA: 24h)</span>
+                        </label>
+                        <label class="radio-urgency media">
+                            <input type="radio" name="urgency" value="media" checked>
+                            <span>🟡 Média (SLA: 48h)</span>
+                        </label>
+                        <label class="radio-urgency baixa">
+                            <input type="radio" name="urgency" value="baixa">
+                            <span>🟢 Baixa (SLA: 72h)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="handoff_notes">Notas de Qualificação * (mínimo 50 caracteres)</label>
+                    <textarea
+                        id="handoff_notes"
+                        name="handoff_notes"
+                        rows="6"
+                        placeholder="Descreva: orçamento, autoridade, necessidade, timing, principais dores, objeções..."
+                        required
+                        minlength="50"
+                    ></textarea>
+                    <div class="char-counter">
+                        <span id="notes_char_count">0</span> / 50 caracteres
+                    </div>
+                    <span class="field-error" id="notes_error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="best_time">Melhor horário para contato (opcional)</label>
+                    <input type="text" id="best_time" placeholder="Ex: Manhãs, após 14h">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="transferModal.close()">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" id="transferSubmitBtn" form="transferLeadForm">
+                <span class="btn-text">Transferir Lead</span>
+                <span class="btn-spinner" style="display:none;">
+                    <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    <span class="sr-only">Transferindo...</span>
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
+<link rel="stylesheet" href="/assets/css/components/transfer-modal.css">
+<script src="/assets/js/components/transfer-lead-modal.js"></script>
+<script>
+    // Inicializar modal
+    const transferModal = new TransferLeadModal();
+
+    // Callback opcional após sucesso
+    transferModal.setOnSuccess((handoffId, context) => {
+        console.log('Transferência concluída!', handoffId, context);
+        // Atualize dashboards/listagens aqui usando context.response e context.formData
+    });
+
+    // Exemplo de uso: ao clicar em botão "Transferir" no card do lead
+    document.querySelectorAll('.btn-transfer-lead').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const prospeccaoId = btn.dataset.prospeccaoId;
+            const prospeccaoNome = btn.dataset.prospeccaoNome;
+            transferModal.open(prospeccaoId, prospeccaoNome);
+        });
+    });
+</script>

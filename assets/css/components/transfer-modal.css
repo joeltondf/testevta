@@ -1,0 +1,308 @@
+#transferLeadModal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+}
+
+#transferLeadModal.is-visible {
+    display: flex;
+}
+
+#transferLeadModal .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 24, 34, 0.65);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0;
+}
+
+#transferLeadModal.is-visible .modal-overlay {
+    opacity: 1;
+}
+
+#transferLeadModal .modal-container {
+    position: relative;
+    width: min(100%, 600px);
+    max-height: calc(100vh - 3rem);
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+#transferLeadModal.is-visible .modal-container {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+#transferLeadModal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0));
+}
+
+#transferLeadModal .modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+#transferLeadModal .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #475569;
+    transition: color 0.2s ease;
+}
+
+#transferLeadModal .modal-close:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.45);
+    border-radius: 50%;
+}
+
+#transferLeadModal .modal-close:hover {
+    color: #2563eb;
+}
+
+#transferLeadModal .modal-body {
+    padding: 1.75rem;
+    overflow-y: auto;
+}
+
+#transferLeadModal .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#transferLeadModal .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.6);
+    border-radius: 999px;
+}
+
+#transferLeadModal .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+#transferLeadModal label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1e293b;
+}
+
+#transferLeadModal input[type="text"],
+#transferLeadModal select,
+#transferLeadModal textarea {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+#transferLeadModal input[type="text"]:focus,
+#transferLeadModal select:focus,
+#transferLeadModal textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background: #ffffff;
+}
+
+#transferLeadModal select option[data-recommended="true"] {
+    background: rgba(34, 197, 94, 0.12);
+    font-weight: 600;
+}
+
+#transferLeadModal .radio-group {
+    display: grid;
+    gap: 0.75rem;
+}
+
+#transferLeadModal .radio-urgency {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-weight: 500;
+    color: #0f172a;
+}
+
+#transferLeadModal .radio-urgency input[type="radio"] {
+    accent-color: #2563eb;
+}
+
+#transferLeadModal .radio-urgency.alta {
+    border-color: rgba(220, 38, 38, 0.4);
+}
+
+#transferLeadModal .radio-urgency.media {
+    border-color: rgba(234, 179, 8, 0.4);
+}
+
+#transferLeadModal .radio-urgency.baixa {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+#transferLeadModal .radio-urgency:hover,
+#transferLeadModal .radio-urgency.is-selected {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    background: #ffffff;
+}
+
+#transferLeadModal .char-counter {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: right;
+}
+
+#transferLeadModal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.25rem 1.75rem 1.75rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.3);
+    background: #f8fafc;
+}
+
+#transferLeadModal .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    min-width: 140px;
+}
+
+#transferLeadModal .btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+#transferLeadModal .btn-secondary {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+#transferLeadModal .btn-secondary:hover:not(:disabled) {
+    background: #cbd5f5;
+}
+
+#transferLeadModal .btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+}
+
+#transferLeadModal .btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+#transferLeadModal .btn-primary .btn-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+#transferLeadModal .field-error {
+    font-size: 0.85rem;
+    color: #dc2626;
+}
+
+.transfer-toast {
+    position: fixed;
+    inset-inline: 50%;
+    bottom: 32px;
+    transform: translateX(-50%) translateY(20px);
+    padding: 0.85rem 1.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #2563eb;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 9999;
+}
+
+.transfer-toast--error {
+    background: #dc2626;
+}
+
+.transfer-toast.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 640px) {
+    #transferLeadModal {
+        padding: 1rem;
+    }
+
+    #transferLeadModal .modal-container {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    #transferLeadModal .modal-header,
+    #transferLeadModal .modal-body,
+    #transferLeadModal .modal-footer {
+        padding-inline: 1.25rem;
+    }
+
+    #transferLeadModal .btn {
+        width: 100%;
+    }
+
+    #transferLeadModal .modal-footer {
+        flex-direction: column-reverse;
+        gap: 0.5rem;
+    }
+}
+
